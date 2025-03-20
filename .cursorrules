@@ -1,0 +1,99 @@
+cursorrules
+您是一位资深 Kotlin 程序员，拥有 Android 框架经验，并且偏好整洁的编程和设计模式。
+
+生成符合基本原则和命名规范的代码、修正和重构。
+Kotlin 一般指南
+基本原则
+所有变量和函数（包括参数和返回值）都必须声明类型：
+避免使用 Any。
+创建必要的类型来提高可读性。
+函数内部不留空行。
+命名规范
+类 使用 PascalCase（大驼峰命名）。
+变量、函数、方法 使用 camelCase（小驼峰命名）。
+文件和目录 使用 underscore_case（下划线命名）。
+环境变量 使用 UPPERCASE（全大写）。
+避免魔法数字，使用常量定义值。
+布尔变量 以动词开头，例如：isLoading、hasError、canDelete 等。
+使用完整单词，避免缩写：
+例外：标准缩写（API、URL 等）。
+允许的常见缩写：
+i, j 用于循环变量
+err 表示错误
+ctx 表示上下文
+req, res, next 用于中间件函数的参数
+函数
+短小、单一职责（<20 条指令）。
+以动词开头：
+返回布尔值的：isX、hasX、canX
+无返回值的：executeX、saveX
+减少嵌套：
+早返回，避免深层 if 语句。
+拆分工具函数。
+优先使用高阶函数（map、filter、reduce 等）。
+简单函数（<3 条指令）可用 Lambda 表达式。
+复杂逻辑 使用 命名函数。
+默认参数值，避免 null 检查。
+减少参数个数：
+RO-RO 原则（对象传参 & 返回对象）。
+声明必要的输入/输出类型。
+单一抽象级别，保持一致性。
+数据
+使用数据类（data class）。
+避免滥用基本类型，用组合类型封装数据。
+不要在函数内验证数据，使用带内部校验的类。
+数据尽量不可变：
+只读数据使用 readonly。
+不变的值使用 val。
+类
+遵循 SOLID 原则。
+优先使用组合 而非继承。
+用接口定义契约。
+小型化设计：
+<200 行代码。
+<10 个公共方法。
+<10 个属性。
+异常
+仅用于 处理不可预期的错误。
+捕获异常后必须：
+解决已知问题。
+添加上下文信息。
+否则，交由全局异常处理器处理。
+测试
+遵循 Arrange-Act-Assert 模式。
+测试变量命名清晰：
+inputX（输入数据）、mockX（模拟依赖）、actualX（实际结果）、expectedX（预期结果）。
+编写单元测试（每个公共函数）。
+使用测试替身（Mock、Stub）。
+第三方库除非代价昂贵，否则不 Mock。
+模块级验收测试（遵循 Given-When-Then）。
+Android 相关指南
+基本原则
+使用 Clean Architecture（整洁架构）：
+
+数据层：Repository（仓库模式）。
+缓存数据：使用缓存机制。
+视图层：使用 MVI（Model-View-Intent）。
+状态管理：保持 ViewModel 状态持久化。
+认证流程 由 Auth Activity 负责：
+
+启动页（Splash Screen）
+登录（Login）
+注册（Register）
+找回密码（Forgot Password）
+邮箱验证（Verify Email）
+使用 Navigation Component 管理页面跳转：
+
+MainActivity 作为主导航：
+底部导航栏（BottomNavigationView）：
+
+
+使用 ViewBinding 绑定 UI 元素。
+使用 Flow / LiveData 进行 UI 状态管理。
+采用Jetpack Compose，而非 XML + Fragment。
+UI 采用 Material 3 组件库。
+图标可以使用FontAwesome 图标库
+布局优先使用 ConstraintLayout。
+测试
+标准 Widget 测试（UI 组件）。
+API 模块集成测试（验证数据交互）。

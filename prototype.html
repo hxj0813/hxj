@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全功能原型界面</title>
+    <!-- 引入Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* 颜色变量 */
+            --primary-color-light: #4A90E2;
+            --primary-color-dark: #357ABD;
+            --background-color: #F5F5F5;
+            --accent-color-pink: #FF7F7F;
+            --accent-color-green: #98FF98;
+            --text-color-dark: #333333;
+            --text-color-light: #666666;
+            --card-background: #FFFFFF;
+            
+            /* 间距变量 - 基于8px网格系统 */
+            --spacing-xs: 8px;
+            --spacing-sm: 16px;
+            --spacing-md: 24px;
+            --spacing-lg: 32px;
+            --spacing-xl: 48px;
+            
+            /* 阴影变量 */
+            --shadow-light: 0 2px 5px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.1);
+            
+            /* 圆角变量 */
+            --border-radius-sm: 4px;
+            --border-radius-md: 8px;
+            --border-radius-lg: 16px;
+            
+            /* 过渡变量 */
+            --transition-fast: 0.2s ease-in-out;
+            --transition-normal: 0.3s ease-in-out;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color-dark);
+            line-height: 1.6;
+        }
+        
+        /* 导航栏样式 */
+        .navbar {
+            background: linear-gradient(to right, var(--primary-color-light), var(--primary-color-dark));
+            color: white;
+            padding: var(--spacing-md) var(--spacing-lg);
+            box-shadow: var(--shadow-medium);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .navbar-tabs {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+        
+        .navbar-tab {
+            cursor: pointer;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--border-radius-sm);
+            transition: var(--transition-normal);
+        }
+        
+        .navbar-tab:hover, .navbar-tab.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 主容器样式 */
+        .container {
+            max-width: 1200px;
+            margin: 80px auto 0;
+            padding: var(--spacing-lg);
+        }
+        
+        /* 模块通用样式 */
+        .module {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        .module.active {
+            display: block;
+        }
+        
+        /* 卡片通用样式 */
+        .card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            transition: var(--transition-normal);
+        }
+        
+        .card:hover {
+            box-shadow: var(--shadow-medium);
+            transform: translateY(-2px);
+        }
+        
+        /* 按钮通用样式 */
+        .btn {
+            background: linear-gradient(to right, var(--primary-color-light), var(--primary-color-dark));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            padding: var(--spacing-xs) var(--spacing-md);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition-normal);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+        
+        .btn-green {
+            background: linear-gradient(to right, #85D6B0, var(--accent-color-green));
+        }
+        
+        .btn-pink {
+            background: linear-gradient(to right, #FF9E9E, var(--accent-color-pink));
+        }
+        
+        /* 动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 磨砂玻璃效果 */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--spacing-sm);
+            }
+            
+            .navbar {
+                padding: var(--spacing-sm);
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .navbar-tabs {
+                margin-top: var(--spacing-sm);
+                width: 100%;
+                overflow-x: auto;
+            }
+        }
+        
+        /* 目标管理模块特定样式 */
+        .goals-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+        
+        .goal-card {
+            border-radius: var(--border-radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .goal-card.important {
+            border: 2px solid var(--accent-color-pink);
+        }
+        
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .goal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .goal-date {
+            font-size: 0.9rem;
+            color: var(--text-color-light);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .goal-description {
+            font-size: 0.95rem;
+            margin-bottom: var(--spacing-sm);
+            flex-grow: 1;
+        }
+        
+        .goal-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .goal-badge.long-term {
+            background-color: rgba(74, 144, 226, 0.2);
+            color: var(--primary-color-dark);
+        }
+        
+        .goal-badge.short-term {
+            background-color: rgba(152, 255, 152, 0.2);
+            color: #2E8B57;
+        }
+        
+        .goal-progress-container {
+            margin-top: var(--spacing-sm);
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+        }
+        
+        .goal-progress {
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(to right, var(--primary-color-light), var(--primary-color-dark));
+            transition: width 1s ease-in-out;
+        }
+        
+        .goal-progress.completed {
+            background: linear-gradient(to right, #85D6B0, var(--accent-color-green));
+            animation: progressPulse 2s ease-in-out infinite;
+        }
+        
+        .goal-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--spacing-sm);
+        }
+        
+        .add-goal-container {
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .goal-filters {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+        
+        .goal-filter {
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: var(--border-radius-sm);
+            font-size: 0.9rem;
+            background-color: rgba(0, 0, 0, 0.05);
+            transition: var(--transition-normal);
+        }
+        
+        .goal-filter:hover, .goal-filter.active {
+            background-color: var(--primary-color-light);
+            color: white;
+        }
+        
+        @keyframes progressPulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        
+        /* 任务规划模块特定样式 */
+        .tasks-container {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+        
+        .calendar-view {
+            flex: 2;
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+        }
+        
+        .task-list {
+            flex: 3;
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .calendar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .calendar-nav {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+        
+        .calendar-nav-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: var(--border-radius-sm);
+            transition: var(--transition-fast);
+        }
+        
+        .calendar-nav-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        
+        .calendar-weekday {
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-color-light);
+            padding: 8px 0;
+            font-size: 0.9rem;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1/1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            position: relative;
+            font-size: 0.9rem;
+        }
+        
+        .calendar-day:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .calendar-day.today {
+            background-color: var(--primary-color-light);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .calendar-day.has-tasks::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            width: 5px;
+            height: 5px;
+            background-color: var(--accent-color-pink);
+            border-radius: 50%;
+        }
+        
+        .calendar-day.today.has-tasks::after {
+            background-color: white;
+        }
+        
+        .task-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-list-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .task-list-date {
+            font-weight: normal;
+            color: var(--primary-color-dark);
+        }
+        
+        .task-item {
+            padding: var(--spacing-sm);
+            border-radius: var(--border-radius-md);
+            margin-bottom: var(--spacing-xs);
+            background-color: rgba(0, 0, 0, 0.02);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        
+        .task-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: translateX(2px);
+        }
+        
+        .task-checkbox {
+            margin-right: var(--spacing-sm);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color-light);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            flex-shrink: 0;
+        }
+        
+        .task-checkbox.checked {
+            background-color: var(--accent-color-green);
+            border-color: var(--accent-color-green);
+            color: white;
+        }
+        
+        .task-content {
+            flex-grow: 1;
+            transition: var(--transition-fast);
+        }
+        
+        .task-title {
+            font-weight: 500;
+            margin-bottom: 2px;
+            transition: var(--transition-fast);
+        }
+        
+        .task-item.completed .task-title {
+            text-decoration: line-through;
+            color: var(--text-color-light);
+        }
+        
+        .task-meta {
+            display: flex;
+            font-size: 0.8rem;
+            color: var(--text-color-light);
+            gap: var(--spacing-xs);
+        }
+        
+        .task-priority {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 3px;
+            position: relative;
+            top: 2px;
+        }
+        
+        .priority-high {
+            background-color: var(--accent-color-pink);
+        }
+        
+        .priority-medium {
+            background-color: orange;
+        }
+        
+        .priority-low {
+            background-color: var(--accent-color-green);
+        }
+        
+        .add-task-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(to right bottom, var(--primary-color-light), var(--primary-color-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            z-index: 100;
+        }
+        
+        .add-task-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+        }
+        
+        /* 时间追踪模块特定样式 */
+        .time-tracking-container {
+            margin-top: var(--spacing-md);
+        }
+        
+        .tracking-sections {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: var(--spacing-md);
+        }
+        
+        .timer-section {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stats-section {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+        }
+        
+        .timer-display {
+            text-align: center;
+            padding: var(--spacing-lg) 0;
+        }
+        
+        .timer-time {
+            font-size: 3.5rem;
+            font-weight: 300;
+            margin-bottom: var(--spacing-md);
+            font-family: monospace;
+        }
+        
+        .timer-task {
+            font-size: 1.2rem;
+            margin-bottom: var(--spacing-sm);
+            color: var(--primary-color-dark);
+            font-weight: 500;
+        }
+        
+        .timer-category {
+            color: var(--text-color-light);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .timer-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition-normal);
+        }
+        
+        .timer-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .timer-btn-start {
+            background: linear-gradient(to right, #85D6B0, var(--accent-color-green));
+            color: white;
+        }
+        
+        .timer-btn-pause {
+            background: linear-gradient(to right, #FFD54F, #FFA726);
+            color: white;
+        }
+        
+        .timer-btn-stop {
+            background: linear-gradient(to right, #FF9E9E, var(--accent-color-pink));
+            color: white;
+        }
+        
+        .timer-tasks {
+            margin-top: auto;
+        }
+        
+        .timer-tasks-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .recent-task {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            background-color: rgba(0, 0, 0, 0.02);
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .recent-task:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: translateX(2px);
+        }
+        
+        .recent-task-time {
+            color: var(--text-color-light);
+            font-size: 0.9rem;
+        }
+        
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .stats-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .stats-period {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .stats-period-btn {
+            padding: 4px 10px;
+            border-radius: var(--border-radius-sm);
+            font-size: 0.9rem;
+            background-color: rgba(0, 0, 0, 0.05);
+            border: none;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .stats-period-btn.active, .stats-period-btn:hover {
+            background-color: var(--primary-color-light);
+            color: white;
+        }
+        
+        .time-chart {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .chart-container {
+            height: 250px;
+            position: relative;
+        }
+        
+        .bar-chart {
+            display: flex;
+            height: 200px;
+            align-items: flex-end;
+            gap: 12px;
+            padding-bottom: 30px;
+            position: relative;
+        }
+        
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, var(--primary-color-light), var(--primary-color-dark));
+            border-radius: 5px 5px 0 0;
+            position: relative;
+            transition: height 1s ease-in-out;
+            min-width: 30px;
+        }
+        
+        .chart-bar::after {
+            content: attr(data-value);
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            color: var(--text-color-light);
+        }
+        
+        .chart-bar::before {
+            content: attr(data-label);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            color: var(--text-color-dark);
+            white-space: nowrap;
+        }
+        
+        .category-breakdown {
+            margin-top: var(--spacing-md);
+        }
+        
+        .category-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .category-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .category-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 8px;
+        }
+        
+        .category-name {
+            flex: 1;
+        }
+        
+        .category-time {
+            font-weight: 500;
+        }
+        
+        .category-bar {
+            height: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+        
+        .category-progress {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        /* 习惯养成模块特定样式 */
+        .habits-container {
+            margin-top: var(--spacing-md);
+        }
+        
+        .habits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .habits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--spacing-md);
+        }
+        
+        .habit-card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .habit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .habit-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .habit-subtitle {
+            color: var(--text-color-light);
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .habit-streak {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(to right, #FFD54F, #FFA726);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .habit-streak i {
+            margin-right: 4px;
+        }
+        
+        .habit-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin: var(--spacing-sm) 0;
+        }
+        
+        .habit-day {
+            aspect-ratio: 1/1;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--text-color-light);
+            position: relative;
+        }
+        
+        .habit-day.completed {
+            background-color: var(--accent-color-green);
+            color: white;
+        }
+        
+        .habit-day.missed {
+            background-color: rgba(255, 127, 127, 0.3);
+        }
+        
+        .habit-day.today {
+            border: 2px solid var(--primary-color-light);
+        }
+        
+        .habit-progress {
+            margin: var(--spacing-sm) 0;
+        }
+        
+        .habit-progress-title {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .habit-progress-bar {
+            height: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .habit-progress-value {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary-color-light), var(--primary-color-dark));
+            border-radius: 4px;
+            transition: width 1s ease-in-out;
+        }
+        
+        .habit-actions {
+            margin-top: var(--spacing-md);
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .habit-check-in {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .check-in-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(to right bottom, var(--primary-color-light), var(--primary-color-dark));
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 8px;
+        }
+        
+        .check-in-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .check-in-btn.completed {
+            background: linear-gradient(to right bottom, #85D6B0, var(--accent-color-green));
+            pointer-events: none;
+        }
+        
+        .check-in-label {
+            font-size: 0.9rem;
+            color: var(--text-color-light);
+        }
+        
+        .achievements-section {
+            margin-top: var(--spacing-lg);
+        }
+        
+        .achievements-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: var(--spacing-sm);
+        }
+        
+        .achievement-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .achievement-badge {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            color: white;
+            background: linear-gradient(135deg, var(--primary-color-light), var(--primary-color-dark));
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .achievement-badge::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0));
+            transform: rotate(35deg);
+        }
+        
+        .achievement-badge.locked {
+            background: #e0e0e0;
+            color: #999;
+        }
+        
+        .achievement-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .achievement-description {
+            font-size: 0.8rem;
+            color: var(--text-color-light);
+        }
+        
+        /* 反思笔记模块特定样式 */
+        .reflection-container {
+            margin-top: var(--spacing-md);
+        }
+        
+        .reflection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .reflection-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: var(--spacing-md);
+        }
+        
+        .notes-sidebar {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            padding: var(--spacing-md);
+            height: 620px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+            padding-bottom: var(--spacing-xs);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar-title {
+            font-weight: 600;
+        }
+        
+        .search-box {
+            position: relative;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border-radius: var(--border-radius-sm);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background-color: rgba(0, 0, 0, 0.02);
+            transition: var(--transition-fast);
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color-light);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-color-light);
+        }
+        
+        .notes-list {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        
+        .note-item {
+            padding: var(--spacing-sm);
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .note-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .note-item.active {
+            background-color: rgba(74, 144, 226, 0.1);
+            border-left: 3px solid var(--primary-color-light);
+        }
+        
+        .note-title {
+            font-weight: 500;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .note-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-color-light);
+        }
+        
+        .note-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .note-tag {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .note-editor {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-light);
+            height: 620px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .editor-title input {
+            font-size: 1.2rem;
+            font-weight: 500;
+            border: none;
+            padding: 5px 0;
+            width: 100%;
+            background-color: transparent;
+        }
+        
+        .editor-title input:focus {
+            outline: none;
+        }
+        
+        .editor-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+        
+        .editor-toolbar {
+            padding: var(--spacing-xs) var(--spacing-md);
+            display: flex;
+            gap: var(--spacing-xs);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .toolbar-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: var(--border-radius-sm);
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .toolbar-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .toolbar-divider {
+            width: 1px;
+            background-color: rgba(0, 0, 0, 0.1);
+            margin: 0 5px;
+        }
+        
+        .editor-content {
+            flex-grow: 1;
+            padding: var(--spacing-md);
+            overflow-y: auto;
+        }
+        
+        .editor-textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            resize: none;
+            font-size: 1rem;
+            line-height: 1.6;
+            font-family: inherit;
+        }
+        
+        .editor-textarea:focus {
+            outline: none;
+        }
+        
+        .editor-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+            color: var(--text-color-light);
+        }
+        
+        .editor-tags {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .editor-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            background-color: rgba(74, 144, 226, 0.1);
+            color: var(--primary-color-dark);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            gap: 5px;
+        }
+        
+        .editor-tag i {
+            cursor: pointer;
+        }
+        
+        .add-tag-btn {
+            padding: 3px 8px;
+            border: 1px dashed rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        
+        .add-tag-btn:hover {
+            border-color: var(--primary-color-light);
+            color: var(--primary-color-dark);
+        }
+        
+        .add-tag-btn i {
+            margin-right: 3px;
+        }
+        
+        .word-count {
+            color: var(--text-color-light);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div class="navbar">
+        <h1>个人成长管理系统</h1>
+        <div class="navbar-tabs">
+            <div class="navbar-tab active" data-target="goals">目标管理</div>
+            <div class="navbar-tab" data-target="tasks">任务规划</div>
+            <div class="navbar-tab" data-target="time">时间追踪</div>
+            <div class="navbar-tab" data-target="habits">习惯养成</div>
+            <div class="navbar-tab" data-target="reflection">反思笔记</div>
+        </div>
+    </div>
+    
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 模块内容将在这里动态显示 -->
+        <div id="goals" class="module active">
+            <h2>目标管理</h2>
+            <p>追踪您的长期和短期目标，保持专注和动力</p>
+            
+            <div class="add-goal-container">
+                <button class="btn">
+                    <i class="fas fa-plus"></i> 创建新目标
+                </button>
+                <div class="goal-filters">
+                    <div class="goal-filter active">全部</div>
+                    <div class="goal-filter">进行中</div>
+                    <div class="goal-filter">已完成</div>
+                    <div class="goal-filter">重要</div>
+                </div>
+            </div>
+            
+            <div class="goals-container">
+                <!-- 目标卡片1 - 重要目标 -->
+                <div class="goal-card glass-effect important">
+                    <div>
+                        <div class="goal-header">
+                            <span class="goal-badge long-term">长期目标</span>
+                            <i class="fas fa-star" style="color: var(--accent-color-pink);"></i>
+                        </div>
+                        <h3 class="goal-title">完成个人网站开发</h3>
+                        <div class="goal-date"><i class="far fa-calendar"></i> 截止日期: 2023年12月31日</div>
+                        <p class="goal-description">设计并开发一个展示我专业技能的个人网站，包括作品集和博客功能。</p>
+                    </div>
+                    <div>
+                        <div class="goal-progress-container">
+                            <div class="goal-progress" style="width: 65%;"></div>
+                        </div>
+                        <div class="goal-actions">
+                            <span>65% 完成</span>
+                            <div>
+                                <i class="fas fa-edit" style="cursor: pointer; margin-right: 8px;"></i>
+                                <i class="fas fa-trash-alt" style="cursor: pointer;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 目标卡片2 -->
+                <div class="goal-card glass-effect">
+                    <div>
+                        <div class="goal-header">
+                            <span class="goal-badge short-term">短期目标</span>
+                            <i class="far fa-star" style="color: #ccc; cursor: pointer;"></i>
+                        </div>
+                        <h3 class="goal-title">学习React框架</h3>
+                        <div class="goal-date"><i class="far fa-calendar"></i> 截止日期: 2023年9月15日</div>
+                        <p class="goal-description">完成React官方教程并构建一个小型应用程序来巩固所学知识。</p>
+                    </div>
+                    <div>
+                        <div class="goal-progress-container">
+                            <div class="goal-progress completed" style="width: 100%;"></div>
+                        </div>
+                        <div class="goal-actions">
+                            <span>已完成 <i class="fas fa-check-circle" style="color: var(--accent-color-green);"></i></span>
+                            <div>
+                                <i class="fas fa-edit" style="cursor: pointer; margin-right: 8px;"></i>
+                                <i class="fas fa-trash-alt" style="cursor: pointer;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 目标卡片3 -->
+                <div class="goal-card glass-effect">
+                    <div>
+                        <div class="goal-header">
+                            <span class="goal-badge long-term">长期目标</span>
+                            <i class="far fa-star" style="color: #ccc; cursor: pointer;"></i>
+                        </div>
+                        <h3 class="goal-title">提高英语口语能力</h3>
+                        <div class="goal-date"><i class="far fa-calendar"></i> 截止日期: 2024年6月30日</div>
+                        <p class="goal-description">每周参加至少两次英语角活动，并找外教一对一辅导，提高日常交流能力。</p>
+                    </div>
+                    <div>
+                        <div class="goal-progress-container">
+                            <div class="goal-progress" style="width: 30%;"></div>
+                        </div>
+                        <div class="goal-actions">
+                            <span>30% 完成</span>
+                            <div>
+                                <i class="fas fa-edit" style="cursor: pointer; margin-right: 8px;"></i>
+                                <i class="fas fa-trash-alt" style="cursor: pointer;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 目标卡片4 -->
+                <div class="goal-card glass-effect">
+                    <div>
+                        <div class="goal-header">
+                            <span class="goal-badge short-term">短期目标</span>
+                            <i class="far fa-star" style="color: #ccc; cursor: pointer;"></i>
+                        </div>
+                        <h3 class="goal-title">完成读书计划</h3>
+                        <div class="goal-date"><i class="far fa-calendar"></i> 截止日期: 2023年10月31日</div>
+                        <p class="goal-description">阅读《深入理解计算机系统》并做读书笔记，每章节完成相关练习。</p>
+                    </div>
+                    <div>
+                        <div class="goal-progress-container">
+                            <div class="goal-progress" style="width: 45%;"></div>
+                        </div>
+                        <div class="goal-actions">
+                            <span>45% 完成</span>
+                            <div>
+                                <i class="fas fa-edit" style="cursor: pointer; margin-right: 8px;"></i>
+                                <i class="fas fa-trash-alt" style="cursor: pointer;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tasks" class="module">
+            <h2>任务规划</h2>
+            <p>高效规划和管理您的日常任务，提高工作效率和专注度</p>
+            
+            <div class="tasks-container">
+                <div class="calendar-view">
+                    <div class="calendar-header">
+                        <div class="calendar-title">2023年10月</div>
+                        <div class="calendar-nav">
+                            <button class="calendar-nav-btn"><i class="fas fa-chevron-left"></i></button>
+                            <button class="calendar-nav-btn">今天</button>
+                            <button class="calendar-nav-btn"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-grid">
+                        <!-- 星期标题 -->
+                        <div class="calendar-weekday">日</div>
+                        <div class="calendar-weekday">一</div>
+                        <div class="calendar-weekday">二</div>
+                        <div class="calendar-weekday">三</div>
+                        <div class="calendar-weekday">四</div>
+                        <div class="calendar-weekday">五</div>
+                        <div class="calendar-weekday">六</div>
+                        
+                        <!-- 日期格子 - 上月 -->
+                        <div class="calendar-day" style="color: #ccc;">24</div>
+                        <div class="calendar-day" style="color: #ccc;">25</div>
+                        <div class="calendar-day" style="color: #ccc;">26</div>
+                        <div class="calendar-day" style="color: #ccc;">27</div>
+                        <div class="calendar-day" style="color: #ccc;">28</div>
+                        <div class="calendar-day" style="color: #ccc;">29</div>
+                        <div class="calendar-day" style="color: #ccc;">30</div>
+                        
+                        <!-- 日期格子 - 本月 -->
+                        <div class="calendar-day">1</div>
+                        <div class="calendar-day">2</div>
+                        <div class="calendar-day">3</div>
+                        <div class="calendar-day">4</div>
+                        <div class="calendar-day">5</div>
+                        <div class="calendar-day">6</div>
+                        <div class="calendar-day">7</div>
+                        <div class="calendar-day">8</div>
+                        <div class="calendar-day">9</div>
+                        <div class="calendar-day has-tasks">10</div>
+                        <div class="calendar-day">11</div>
+                        <div class="calendar-day">12</div>
+                        <div class="calendar-day has-tasks">13</div>
+                        <div class="calendar-day">14</div>
+                        <div class="calendar-day today has-tasks">15</div>
+                        <div class="calendar-day has-tasks">16</div>
+                        <div class="calendar-day">17</div>
+                        <div class="calendar-day">18</div>
+                        <div class="calendar-day has-tasks">19</div>
+                        <div class="calendar-day">20</div>
+                        <div class="calendar-day">21</div>
+                        <div class="calendar-day">22</div>
+                        <div class="calendar-day has-tasks">23</div>
+                        <div class="calendar-day">24</div>
+                        <div class="calendar-day">25</div>
+                        <div class="calendar-day">26</div>
+                        <div class="calendar-day">27</div>
+                        <div class="calendar-day">28</div>
+                        <div class="calendar-day">29</div>
+                        <div class="calendar-day">30</div>
+                        <div class="calendar-day">31</div>
+                        
+                        <!-- 日期格子 - 下月 -->
+                        <div class="calendar-day" style="color: #ccc;">1</div>
+                        <div class="calendar-day" style="color: #ccc;">2</div>
+                        <div class="calendar-day" style="color: #ccc;">3</div>
+                        <div class="calendar-day" style="color: #ccc;">4</div>
+                    </div>
+                </div>
+                
+                <div class="task-list">
+                    <div class="task-list-header">
+                        <div class="task-list-title">
+                            <span>今日任务</span>
+                            <span class="task-list-date">10月15日</span>
+                        </div>
+                        <div>
+                            <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                <i class="fas fa-plus"></i> 添加
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 任务项目 -->
+                    <div class="task-item">
+                        <div class="task-checkbox">
+                            <i class="fas fa-check" style="font-size: 0.7rem; opacity: 0;"></i>
+                        </div>
+                        <div class="task-content">
+                            <div class="task-title">完成前端页面开发</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-clock"></i> 09:00 - 11:30</span>
+                                <span><span class="task-priority priority-high"></span>高</span>
+                            </div>
+                        </div>
+                        <div>
+                            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="task-item completed">
+                        <div class="task-checkbox checked">
+                            <i class="fas fa-check" style="font-size: 0.7rem;"></i>
+                        </div>
+                        <div class="task-content">
+                            <div class="task-title">团队每周例会</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-clock"></i> 13:00 - 14:00</span>
+                                <span><span class="task-priority priority-medium"></span>中</span>
+                            </div>
+                        </div>
+                        <div>
+                            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="task-item">
+                        <div class="task-checkbox">
+                            <i class="fas fa-check" style="font-size: 0.7rem; opacity: 0;"></i>
+                        </div>
+                        <div class="task-content">
+                            <div class="task-title">整理项目文档</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-clock"></i> 14:30 - 16:00</span>
+                                <span><span class="task-priority priority-medium"></span>中</span>
+                            </div>
+                        </div>
+                        <div>
+                            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="task-item">
+                        <div class="task-checkbox">
+                            <i class="fas fa-check" style="font-size: 0.7rem; opacity: 0;"></i>
+                        </div>
+                        <div class="task-content">
+                            <div class="task-title">学习React Hook新特性</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-clock"></i> 18:30 - 20:00</span>
+                                <span><span class="task-priority priority-low"></span>低</span>
+                            </div>
+                        </div>
+                        <div>
+                            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="task-item">
+                        <div class="task-checkbox">
+                            <i class="fas fa-check" style="font-size: 0.7rem; opacity: 0;"></i>
+                        </div>
+                        <div class="task-content">
+                            <div class="task-title">阅读技术博客文章</div>
+                            <div class="task-meta">
+                                <span><i class="far fa-clock"></i> 21:00 - 22:00</span>
+                                <span><span class="task-priority priority-low"></span>低</span>
+                            </div>
+                        </div>
+                        <div>
+                            <i class="fas fa-ellipsis-v" style="color: #ccc;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 悬浮添加按钮 -->
+            <div class="add-task-btn">
+                <i class="fas fa-plus"></i>
+            </div>
+        </div>
+        
+        <div id="time" class="module">
+            <h2>时间追踪</h2>
+            <p>分析您的时间使用情况，提高时间利用效率</p>
+            
+            <div class="time-tracking-container">
+                <div class="tracking-sections">
+                    <div class="timer-section">
+                        <div class="timer-display">
+                            <div class="timer-time">00:45:28</div>
+                            <div class="timer-task">学习React框架</div>
+                            <div class="timer-category">分类：学习</div>
+                            
+                            <div class="timer-controls">
+                                <button class="timer-btn timer-btn-pause">
+                                    <i class="fas fa-pause"></i>
+                                </button>
+                                <button class="timer-btn timer-btn-stop">
+                                    <i class="fas fa-stop"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="timer-tasks">
+                            <div class="timer-tasks-title">
+                                <span>最近任务</span>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-plus"></i> 新任务
+                                </button>
+                            </div>
+                            
+                            <div class="recent-task">
+                                <span>学习React框架</span>
+                                <span class="recent-task-time">今天</span>
+                            </div>
+                            <div class="recent-task">
+                                <span>项目开发</span>
+                                <span class="recent-task-time">昨天</span>
+                            </div>
+                            <div class="recent-task">
+                                <span>阅读技术文章</span>
+                                <span class="recent-task-time">昨天</span>
+                            </div>
+                            <div class="recent-task">
+                                <span>写周报</span>
+                                <span class="recent-task-time">3天前</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section">
+                        <div class="stats-header">
+                            <div class="stats-title">时间统计</div>
+                            <div class="stats-period">
+                                <button class="stats-period-btn">日</button>
+                                <button class="stats-period-btn active">周</button>
+                                <button class="stats-period-btn">月</button>
+                                <button class="stats-period-btn">年</button>
+                            </div>
+                        </div>
+                        
+                        <div class="time-chart">
+                            <div class="chart-container">
+                                <div class="bar-chart">
+                                    <div class="chart-bar" style="height: 30%;" data-value="2.5h" data-label="周一"></div>
+                                    <div class="chart-bar" style="height: 60%;" data-value="5h" data-label="周二"></div>
+                                    <div class="chart-bar" style="height: 45%;" data-value="3.8h" data-label="周三"></div>
+                                    <div class="chart-bar" style="height: 75%;" data-value="6.2h" data-label="周四"></div>
+                                    <div class="chart-bar" style="height: 90%;" data-value="7.5h" data-label="周五"></div>
+                                    <div class="chart-bar" style="height: 40%;" data-value="3.3h" data-label="周六"></div>
+                                    <div class="chart-bar" style="height: 25%;" data-value="2.1h" data-label="周日"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="category-breakdown">
+                            <div class="category-title">分类明细</div>
+                            
+                            <div class="category-item">
+                                <div class="category-color" style="background-color: #4A90E2;"></div>
+                                <div class="category-name">学习</div>
+                                <div class="category-time">12.5小时</div>
+                            </div>
+                            <div class="category-bar">
+                                <div class="category-progress" style="width: 40%; background-color: #4A90E2;"></div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-color" style="background-color: #FF7F7F;"></div>
+                                <div class="category-name">工作</div>
+                                <div class="category-time">18.2小时</div>
+                            </div>
+                            <div class="category-bar">
+                                <div class="category-progress" style="width: 60%; background-color: #FF7F7F;"></div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-color" style="background-color: #98FF98;"></div>
+                                <div class="category-name">休闲</div>
+                                <div class="category-time">5.8小时</div>
+                            </div>
+                            <div class="category-bar">
+                                <div class="category-progress" style="width: 20%; background-color: #98FF98;"></div>
+                            </div>
+                            
+                            <div class="category-item">
+                                <div class="category-color" style="background-color: #FFD700;"></div>
+                                <div class="category-name">运动</div>
+                                <div class="category-time">3.5小时</div>
+                            </div>
+                            <div class="category-bar">
+                                <div class="category-progress" style="width: 10%; background-color: #FFD700;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="habits" class="module">
+            <h2>习惯养成</h2>
+            <p>培养积极的习惯，提升自律能力和生活质量</p>
+            
+            <div class="habits-container">
+                <div class="habits-header">
+                    <div>
+                        <h3>我的习惯</h3>
+                    </div>
+                    <button class="btn btn-green">
+                        <i class="fas fa-plus"></i> 添加习惯
+                    </button>
+                </div>
+                
+                <div class="habits-grid">
+                    <!-- 习惯卡片1 -->
+                    <div class="habit-card">
+                        <div class="habit-header">
+                            <div>
+                                <div class="habit-title">每日阅读</div>
+                                <div class="habit-subtitle">每天阅读30分钟</div>
+                            </div>
+                            <div class="habit-streak">
+                                <i class="fas fa-fire"></i> 连续12天
+                            </div>
+                        </div>
+                        
+                        <div class="habit-calendar">
+                            <div class="habit-day completed">1</div>
+                            <div class="habit-day completed">2</div>
+                            <div class="habit-day completed">3</div>
+                            <div class="habit-day completed">4</div>
+                            <div class="habit-day completed">5</div>
+                            <div class="habit-day completed">6</div>
+                            <div class="habit-day completed">7</div>
+                            <div class="habit-day completed">8</div>
+                            <div class="habit-day completed">9</div>
+                            <div class="habit-day completed">10</div>
+                            <div class="habit-day completed">11</div>
+                            <div class="habit-day completed">12</div>
+                            <div class="habit-day today">13</div>
+                            <div class="habit-day">14</div>
+                            <div class="habit-day">15</div>
+                            <div class="habit-day">16</div>
+                            <div class="habit-day">17</div>
+                            <div class="habit-day">18</div>
+                            <div class="habit-day">19</div>
+                        </div>
+                        
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>本月进度</span>
+                                <span>12/30</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-value" style="width: 40%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="habit-actions">
+                            <div class="habit-check-in">
+                                <button class="check-in-btn">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <span class="check-in-label">今日打卡</span>
+                            </div>
+                            <div>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-chart-line"></i> 统计
+                                </button>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 习惯卡片2 -->
+                    <div class="habit-card">
+                        <div class="habit-header">
+                            <div>
+                                <div class="habit-title">早起6:00</div>
+                                <div class="habit-subtitle">工作日 6:00前起床</div>
+                            </div>
+                            <div class="habit-streak">
+                                <i class="fas fa-fire"></i> 连续5天
+                            </div>
+                        </div>
+                        
+                        <div class="habit-calendar">
+                            <div class="habit-day missed">1</div>
+                            <div class="habit-day missed">2</div>
+                            <div class="habit-day completed">3</div>
+                            <div class="habit-day completed">4</div>
+                            <div class="habit-day completed">5</div>
+                            <div class="habit-day completed">6</div>
+                            <div class="habit-day completed">7</div>
+                            <div class="habit-day completed">8</div>
+                            <div class="habit-day completed">9</div>
+                            <div class="habit-day completed">10</div>
+                            <div class="habit-day completed">11</div>
+                            <div class="habit-day completed">12</div>
+                            <div class="habit-day today">13</div>
+                            <div class="habit-day">14</div>
+                            <div class="habit-day">15</div>
+                            <div class="habit-day">16</div>
+                            <div class="habit-day">17</div>
+                            <div class="habit-day">18</div>
+                            <div class="habit-day">19</div>
+                        </div>
+                        
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>本月进度</span>
+                                <span>10/22</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-value" style="width: 45%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="habit-actions">
+                            <div class="habit-check-in">
+                                <button class="check-in-btn completed">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <span class="check-in-label">已完成</span>
+                            </div>
+                            <div>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-chart-line"></i> 统计
+                                </button>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 习惯卡片3 -->
+                    <div class="habit-card">
+                        <div class="habit-header">
+                            <div>
+                                <div class="habit-title">每周健身</div>
+                                <div class="habit-subtitle">每周3次，每次45分钟</div>
+                            </div>
+                            <div class="habit-streak">
+                                <i class="fas fa-fire"></i> 连续3周
+                            </div>
+                        </div>
+                        
+                        <div class="habit-calendar">
+                            <div class="habit-day completed">周1</div>
+                            <div class="habit-day">周2</div>
+                            <div class="habit-day completed">周3</div>
+                            <div class="habit-day">周4</div>
+                            <div class="habit-day completed">周5</div>
+                            <div class="habit-day">周6</div>
+                            <div class="habit-day">周日</div>
+                            <div class="habit-day completed">周1</div>
+                            <div class="habit-day">周2</div>
+                            <div class="habit-day completed">周3</div>
+                            <div class="habit-day">周4</div>
+                            <div class="habit-day completed">周5</div>
+                            <div class="habit-day today">周6</div>
+                            <div class="habit-day">周日</div>
+                        </div>
+                        
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>本月进度</span>
+                                <span>9/12</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-value" style="width: 75%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="habit-actions">
+                            <div class="habit-check-in">
+                                <button class="check-in-btn">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <span class="check-in-label">今日打卡</span>
+                            </div>
+                            <div>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-chart-line"></i> 统计
+                                </button>
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 成就徽章部分 -->
+                <div class="achievements-section">
+                    <div class="achievements-title">成就徽章</div>
+                    <div class="achievements-grid">
+                        <div class="achievement-item">
+                            <div class="achievement-badge">
+                                <i class="fas fa-medal"></i>
+                            </div>
+                            <div class="achievement-name">习惯养成者</div>
+                            <div class="achievement-description">连续完成习惯7天</div>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-badge">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="achievement-name">坚持不懈</div>
+                            <div class="achievement-description">连续完成习惯30天</div>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-badge">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="achievement-name">阅读达人</div>
+                            <div class="achievement-description">完成10本书的阅读</div>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-badge locked">
+                                <i class="fas fa-dumbbell"></i>
+                            </div>
+                            <div class="achievement-name">健身达人</div>
+                            <div class="achievement-description">完成50次健身</div>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-badge locked">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="achievement-name">学习专家</div>
+                            <div class="achievement-description">学习时间累计达100小时</div>
+                        </div>
+                        
+                        <div class="achievement-item">
+                            <div class="achievement-badge locked">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                            <div class="achievement-name">习惯大师</div>
+                            <div class="achievement-description">同时维持5个习惯30天</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="reflection" class="module">
+            <h2>反思笔记</h2>
+            <p>记录您的思考、灵感和感悟，促进深度思考与自我提升</p>
+            
+            <div class="reflection-container">
+                <div class="reflection-header">
+                    <div>
+                        <h3>我的笔记</h3>
+                    </div>
+                    <button class="btn btn-green">
+                        <i class="fas fa-plus"></i> 新建笔记
+                    </button>
+                </div>
+                
+                <div class="reflection-layout">
+                    <div class="notes-sidebar">
+                        <div class="sidebar-header">
+                            <div class="sidebar-title">所有笔记</div>
+                            <div class="sidebar-count">12篇</div>
+                        </div>
+                        
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="搜索笔记...">
+                        </div>
+                        
+                        <div class="notes-list">
+                            <div class="note-item active">
+                                <div class="note-title">学习计划反思</div>
+                                <div class="note-meta">
+                                    <div class="note-date">10月15日</div>
+                                    <div class="note-tags">
+                                        <span class="note-tag">学习</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="note-item">
+                                <div class="note-title">项目复盘总结</div>
+                                <div class="note-meta">
+                                    <div class="note-date">10月12日</div>
+                                    <div class="note-tags">
+                                        <span class="note-tag">工作</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="note-item">
+                                <div class="note-title">读书笔记：《原子习惯》</div>
+                                <div class="note-meta">
+                                    <div class="note-date">10月10日</div>
+                                    <div class="note-tags">
+                                        <span class="note-tag">阅读</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="note-item">
+                                <div class="note-title">周末旅行感悟</div>
+                                <div class="note-meta">
+                                    <div class="note-date">10月8日</div>
+                                    <div class="note-tags">
+                                        <span class="note-tag">生活</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="note-item">
+                                <div class="note-title">每月目标回顾</div>
+                                <div class="note-meta">
+                                    <div class="note-date">10月1日</div>
+                                    <div class="note-tags">
+                                        <span class="note-tag">目标</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="note-item">
+                                <div class="note-title">技术学习路线规划</div>
+                                <div class="note-meta">
+                                    <div class="note-date">9月25日</div>
+                                    <div class="note-tags">
+                                        <span class="note-tag">学习</span>
+                                        <span class="note-tag">技术</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="note-editor">
+                        <div class="editor-header">
+                            <div class="editor-title">
+                                <input type="text" value="学习计划反思">
+                            </div>
+                            <div class="editor-actions">
+                                <button class="btn" style="padding: 4px 8px; font-size: 0.9rem;">
+                                    <i class="fas fa-save"></i> 保存
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="editor-toolbar">
+                            <button class="toolbar-btn"><i class="fas fa-bold"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-italic"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-underline"></i></button>
+                            <div class="toolbar-divider"></div>
+                            <button class="toolbar-btn"><i class="fas fa-heading"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-list-ul"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-list-ol"></i></button>
+                            <div class="toolbar-divider"></div>
+                            <button class="toolbar-btn"><i class="fas fa-link"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-image"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-code"></i></button>
+                            <div class="toolbar-divider"></div>
+                            <button class="toolbar-btn"><i class="fas fa-undo"></i></button>
+                            <button class="toolbar-btn"><i class="fas fa-redo"></i></button>
+                        </div>
+                        
+                        <div class="editor-content">
+                            <textarea class="editor-textarea" placeholder="在这里写下您的想法...">最近一个月我一直在学习React框架，总体感觉收获不少，但也遇到了一些挑战。
+
+## 学习成果
+- 完成了官方教程和文档的阅读
+- 掌握了React基础概念：组件、Props、State等
+- 开发了一个简单的Todo应用作为练习项目
+- 学习了React Hook的基本用法
+
+## 遇到的挑战
+- Context API的使用场景还不是很清晰
+- Redux状态管理的概念理解起来比较抽象
+- 性能优化方面的知识还需要加强
+
+## 下一步计划
+1. 深入学习React Router进行路由管理
+2. 探索Next.js框架，了解服务端渲染
+3. 尝试开发一个更复杂的项目来巩固所学知识
+4. 参加一些线上社区，与其他学习者交流
+
+总的来说，我对自己的学习进度还是比较满意的，但需要更有计划性地推进学习，避免只停留在表面理解。另外，实践是最重要的，需要通过实际项目来检验学习成果。</textarea>
+                        </div>
+                        
+                        <div class="editor-footer">
+                            <div class="editor-tags">
+                                <div class="editor-tag">
+                                    学习 <i class="fas fa-times"></i>
+                                </div>
+                                <div class="editor-tag">
+                                    React <i class="fas fa-times"></i>
+                                </div>
+                                <div class="add-tag-btn">
+                                    <i class="fas fa-plus"></i> 添加标签
+                                </div>
+                            </div>
+                            <div class="word-count">字数：242</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript脚本 -->
+    <script>
+        // 处理导航栏选项卡的切换
+        document.querySelectorAll('.navbar-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 移除所有active类
+                document.querySelectorAll('.navbar-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+                
+                // 添加active类到当前选项卡和对应模块
+                tab.classList.add('active');
+                const targetId = tab.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+        
+        // 目标管理模块交互
+        document.querySelectorAll('.goal-filter').forEach(filter => {
+            filter.addEventListener('click', () => {
+                document.querySelectorAll('.goal-filter').forEach(f => f.classList.remove('active'));
+                filter.classList.add('active');
+            });
+        });
+        
+        // 任务规划模块交互
+        document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('click', () => {
+                const taskItem = checkbox.closest('.task-item');
+                if (taskItem) {
+                    taskItem.classList.toggle('completed');
+                    checkbox.classList.toggle('checked');
+                    const checkIcon = checkbox.querySelector('i');
+                    if (checkIcon) {
+                        checkIcon.style.opacity = checkbox.classList.contains('checked') ? '1' : '0';
+                    }
+                }
+            });
+        });
+        
+        // 时间追踪模块交互
+        document.querySelectorAll('.stats-period-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.stats-period-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+        
+        // 习惯养成模块交互
+        document.querySelectorAll('.check-in-btn:not(.completed)').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.add('completed');
+                btn.nextElementSibling.textContent = '已完成';
+                
+                // 更新对应的habit-day
+                const habitCard = btn.closest('.habit-card');
+                if (habitCard) {
+                    const todayEl = habitCard.querySelector('.habit-day.today');
+                    if (todayEl) {
+                        todayEl.classList.add('completed');
+                    }
+                }
+            });
+        });
+        
+        // 反思笔记模块交互
+        document.querySelectorAll('.note-item').forEach(note => {
+            note.addEventListener('click', () => {
+                document.querySelectorAll('.note-item').forEach(n => n.classList.remove('active'));
+                note.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html> 
