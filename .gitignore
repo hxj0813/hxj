@@ -1,15 +1,90 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# 构建生成的文件
+*.apk
+*.ap_
+*.aab
+*.aar
+*.dex
+
+# Java类文件
+*.class
+
+# 生成的文件
+bin/
+gen/
+out/
+
+# Gradle文件
+.gradle/
+build/
+gradle-app.setting
 local.properties
+.gradletasknamecache
+
+# 本地配置文件
+local.properties
+.idea/
+*.iml
+*.iws
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/codeStyles/
+
+# keystore文件
+*.jks
+*.keystore
+
+# 外部native构建文件夹
+.externalNativeBuild
+.cxx/
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+# 版本控制
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+
+# Android Studio导航编辑器临时文件
+.navigation/
+
+# Android Studio captures文件夹
+captures/
+
+# Profiling数据
+*.hprof
+
+# 备份文件
+*~
+*.bak
+*.swp
+
+# 中间文件
+.class.cache/
+*.tmp
+
+# Kotlin相关
+.kotlin/
+
+# 缓存目录
+.cache/
+
+# Kotlin相关
+.kotlin/
+
+# CMake相关
+cmake-build-*/
