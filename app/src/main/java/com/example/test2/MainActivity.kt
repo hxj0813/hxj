@@ -3,49 +3,34 @@ package com.example.test2
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.test2.presentation.goals.GoalsScreen
-import com.example.test2.presentation.goals.GoalsViewModel
-import com.example.test2.ui.theme.Test2Theme
+import androidx.navigation.compose.rememberNavController
+import com.example.test2.presentation.habits.HabitScreen
+import com.example.test2.presentation.theme.Test2Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             Test2Theme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // 显示目标管理模块界面
-                    GoalsScreen(
-                        viewModel = viewModel()
-                    )
-
+                    MainApp()
                 }
             }
         }
     }
 }
 
-// 保留这些预览函数以便于开发时预览
-@Preview(showBackground = true)
 @Composable
-fun GoalsScreenPreview() {
-    Test2Theme {
-        GoalsScreen(
-            viewModel = viewModel()
-        )
-    }
+fun MainApp() {
+    // 这里可以设置导航或直接显示习惯屏幕
+    // 当前直接显示习惯屏幕作为演示
+    HabitScreen()
 }
