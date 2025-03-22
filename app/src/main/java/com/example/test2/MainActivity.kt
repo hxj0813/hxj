@@ -6,11 +6,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.test2.presentation.goals.GoalsScreen
+import com.example.test2.presentation.goals.GoalsViewModel
 import com.example.test2.ui.theme.Test2Theme
 
 class MainActivity : ComponentActivity() {
@@ -19,29 +24,28 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Test2Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // 显示目标管理模块界面
+                    GoalsScreen(
+                        viewModel = viewModel()
                     )
+
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
+// 保留这些预览函数以便于开发时预览
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun GoalsScreenPreview() {
     Test2Theme {
-        Greeting("Android")
+        GoalsScreen(
+            viewModel = viewModel()
+        )
     }
 }
