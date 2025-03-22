@@ -39,7 +39,6 @@ class TimeTrackingViewModel : ViewModel() {
             is TimeTrackingEvent.SelectDate -> selectDate(event.date)
             is TimeTrackingEvent.FilterCategory -> filterByCategory(event.category)
             is TimeTrackingEvent.SetDateRange -> setDateRange(event.startDate, event.endDate)
-            is TimeTrackingEvent.UpdateSearchQuery -> updateSearchQuery(event.query)
             is TimeTrackingEvent.StartTimeEntry -> startTimeEntry(event.timeEntry)
             is TimeTrackingEvent.StopTimeEntry -> stopTimeEntry(event.endTime)
             is TimeTrackingEvent.AddTimeEntry -> addTimeEntry(event.timeEntry)
@@ -50,6 +49,7 @@ class TimeTrackingViewModel : ViewModel() {
             is TimeTrackingEvent.ShowFilterDialog -> showFilterDialog()
             is TimeTrackingEvent.DismissDialog -> dismissDialog()
             is TimeTrackingEvent.CalculateStatistics -> calculateStatistics()
+            is TimeTrackingEvent.SelectTimeEntry -> selectTimeEntry(event.timeEntry)
         }
     }
     
@@ -131,16 +131,6 @@ class TimeTrackingViewModel : ViewModel() {
     private fun setDateRange(startDate: Date, endDate: Date) {
         _state.update { 
             it.copy(dateRange = Pair(startDate, endDate))
-        }
-        applyFilters()
-    }
-    
-    /**
-     * 更新搜索查询
-     */
-    private fun updateSearchQuery(query: String) {
-        _state.update { 
-            it.copy(searchQuery = query)
         }
         applyFilters()
     }
@@ -316,6 +306,13 @@ class TimeTrackingViewModel : ViewModel() {
     }
     
     /**
+     * 选择时间条目
+     */
+    private fun selectTimeEntry(timeEntry: TimeEntry) {
+        _state.update { it.copy(selectedEntry = timeEntry) }
+    }
+    
+    /**
      * 应用筛选条件
      */
     private fun applyFilters() {
@@ -348,15 +345,6 @@ class TimeTrackingViewModel : ViewModel() {
         // 按分类筛选
         state.selectedCategory?.let { category ->
             filtered = filtered.filter { it.category == category }
-        }
-        
-        // 按搜索词筛选
-        if (state.searchQuery.isNotBlank()) {
-            val query = state.searchQuery.lowercase()
-            filtered = filtered.filter { 
-                it.title.lowercase().contains(query) || 
-                it.description?.lowercase()?.contains(query) ?: false
-            }
         }
         
         return filtered
@@ -491,192 +479,165 @@ class TimeTrackingViewModel : ViewModel() {
         
         var longestStreak = 1
         var currentStreak = 1
+        var previousDay = sortedDays[0]
         
         for (i in 1 until sortedDays.size) {
-            val prevDay = Calendar.getInstance().apply {
-                set(Calendar.YEAR, sortedDays[i-1].first)
-                set(Calendar.MONTH, sortedDays[i-1].second)
-                set(Calendar.DAY_OF_MONTH, sortedDays[i-1].third)
-            }
-            val currDay = Calendar.getInstance().apply {
-                set(Calendar.YEAR, sortedDays[i].first)
-                set(Calendar.MONTH, sortedDays[i].second)
-                set(Calendar.DAY_OF_MONTH, sortedDays[i].third)
+            val currentDay = sortedDays[i]
+            
+            val cal1 = Calendar.getInstance().apply {
+                set(Calendar.YEAR, previousDay.first)
+                set(Calendar.MONTH, previousDay.second)
+                set(Calendar.DAY_OF_MONTH, previousDay.third)
             }
             
-            // 计算两天之间的差值
-            val diff = (currDay.timeInMillis - prevDay.timeInMillis) / (24 * 60 * 60 * 1000)
+            val cal2 = Calendar.getInstance().apply {
+                set(Calendar.YEAR, currentDay.first)
+                set(Calendar.MONTH, currentDay.second)
+                set(Calendar.DAY_OF_MONTH, currentDay.third)
+            }
             
-            if (diff == 1L) {
-                // 连续的一天
+            // 检查是否是连续的一天
+            cal1.add(Calendar.DAY_OF_YEAR, 1)
+            if (cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)) {
                 currentStreak++
                 longestStreak = maxOf(longestStreak, currentStreak)
             } else {
-                // 不连续，重置计数
                 currentStreak = 1
             }
+            
+            previousDay = currentDay
         }
         
         return longestStreak
     }
     
     /**
-     * 生成演示用的时间条目数据
+     * 生成示例时间条目
      */
     private fun generateDummyTimeEntries(): List<TimeEntry> {
+        val now = Date()
         val calendar = Calendar.getInstance()
-        val today = calendar.time
-        
-        // 昨天
-        val yesterday = Calendar.getInstance().apply { 
-            add(Calendar.DAY_OF_YEAR, -1)
-        }
-        
-        // 前天
-        val dayBeforeYesterday = Calendar.getInstance().apply { 
-            add(Calendar.DAY_OF_YEAR, -2)
-        }
-        
-        // 一小时前（可能正在进行）
-        val oneHourAgo = Calendar.getInstance().apply { 
-            add(Calendar.HOUR_OF_DAY, -1)
-        }
         
         return listOf(
-            // 今天的条目
+            // 今天的时间条目
             TimeEntry(
-                id = 1,
-                title = "项目开发",
-                description = "实现用户登录功能",
+                id = 1L,
+                title = "编写代码",
+                description = "为个人成长应用实现时间追踪功能",
                 category = TimeCategory.WORK,
-                startTime = oneHourAgo.time,
-                endTime = null, // 正在进行
-                taskId = 1
+                startTime = Date(now.time - 3 * 60 * 60 * 1000), // 3小时前
+                endTime = Date(now.time - 1 * 60 * 60 * 1000),   // 1小时前
+                tags = listOf("编程", "开发")
             ),
+            
             TimeEntry(
-                id = 2,
-                title = "阅读技术书籍",
-                description = "《Clean Architecture》第5章",
+                id = 2L,
+                title = "学习协程",
+                description = "研究Kotlin协程的高级用法",
                 category = TimeCategory.STUDY,
-                startTime = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 9)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 10)
-                    set(Calendar.MINUTE, 30)
-                }.time
+                startTime = Date(now.time - 5 * 60 * 60 * 1000), // 5小时前
+                endTime = Date(now.time - 4 * 60 * 60 * 1000),   // 4小时前
+                tags = listOf("Kotlin", "学习")
             ),
+            
+            // 昨天的时间条目
             TimeEntry(
-                id = 3,
+                id = 3L,
                 title = "晨跑",
-                description = "5公里慢跑",
+                description = "公园5公里跑步",
                 category = TimeCategory.EXERCISE,
-                startTime = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 7)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = Calendar.getInstance().apply { 
-                    set(Calendar.HOUR_OF_DAY, 7)
-                    set(Calendar.MINUTE, 45)
-                }.time
+                startTime = getTimeForDaysAgo(1, 7), // 昨天早上7点
+                endTime = getTimeForDaysAgo(1, 8),   // 昨天早上8点
+                tags = listOf("健康", "晨练")
             ),
             
-            // 昨天的条目
             TimeEntry(
-                id = 4,
-                title = "团队会议",
-                description = "讨论项目进度",
-                category = TimeCategory.WORK,
-                startTime = yesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 14)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = yesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 15)
-                    set(Calendar.MINUTE, 30)
-                }.time
-            ),
-            TimeEntry(
-                id = 5,
-                title = "学习Kotlin协程",
-                description = "视频教程和实践",
+                id = 4L,
+                title = "阅读",
+                description = "阅读《原子习惯》第5章",
                 category = TimeCategory.STUDY,
-                startTime = yesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 20)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = yesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 22)
-                    set(Calendar.MINUTE, 0)
-                }.time
+                startTime = getTimeForDaysAgo(1, 20), // 昨天晚上8点
+                endTime = getTimeForDaysAgo(1, 21),   // 昨天晚上9点
+                tags = listOf("阅读", "个人成长")
             ),
             
-            // 前天的条目
+            // 前天的时间条目
             TimeEntry(
-                id = 6,
-                title = "编写文档",
-                description = "项目需求文档",
+                id = 5L,
+                title = "项目会议",
+                description = "与团队讨论项目进度",
                 category = TimeCategory.WORK,
-                startTime = dayBeforeYesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 10)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = dayBeforeYesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 12)
-                    set(Calendar.MINUTE, 30)
-                }.time
+                startTime = getTimeForDaysAgo(2, 10), // 前天上午10点
+                endTime = getTimeForDaysAgo(2, 11),   // 前天上午11点
+                tags = listOf("会议", "沟通")
             ),
+            
             TimeEntry(
-                id = 7,
-                title = "瑜伽课",
-                description = "放松和伸展",
-                category = TimeCategory.EXERCISE,
-                startTime = dayBeforeYesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 18)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = dayBeforeYesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 19)
-                    set(Calendar.MINUTE, 0)
-                }.time
-            ),
-            TimeEntry(
-                id = 8,
+                id = 6L,
                 title = "看电影",
-                description = "《盗梦空间》",
+                description = "观看电影《信条》",
                 category = TimeCategory.ENTERTAIN,
-                startTime = dayBeforeYesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 20)
-                    set(Calendar.MINUTE, 0)
-                }.time,
-                endTime = dayBeforeYesterday.apply { 
-                    set(Calendar.HOUR_OF_DAY, 22)
-                    set(Calendar.MINUTE, 30)
-                }.time
+                startTime = getTimeForDaysAgo(2, 19), // 前天晚上7点
+                endTime = getTimeForDaysAgo(2, 21),   // 前天晚上9点
+                tags = listOf("娱乐", "放松")
+            ),
+            
+            // 进行中的时间条目（如果需要）
+            /*
+            TimeEntry(
+                id = 7L,
+                title = "当前任务",
+                description = "正在进行的工作",
+                category = TimeCategory.WORK,
+                startTime = Date(now.time - 30 * 60 * 1000), // 30分钟前
+                endTime = null,
+                tags = listOf("当前", "进行中")
             )
+            */
         )
     }
     
     /**
-     * 生成演示用的任务数据
+     * 获取指定天数前的指定小时的时间
+     */
+    private fun getTimeForDaysAgo(daysAgo: Int, hour: Int): Date {
+        return Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -daysAgo)
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+    }
+    
+    /**
+     * 生成示例任务数据
      */
     private fun generateDummyTasks(): List<Task> {
         return listOf(
             Task(
                 id = 1,
-                title = "完成用户登录功能",
-                description = "实现用户登录和注册界面"
+                title = "完成个人成长应用的时间追踪功能",
+                description = "实现时间条目的CRUD、时间统计和可视化",
+                priority = com.example.test2.data.model.TaskPriority.HIGH,
+                dueDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 2) }.time
             ),
+            
             Task(
                 id = 2,
-                title = "修复应用崩溃Bug",
-                description = "处理在Android 10设备上的闪退问题"
+                title = "学习Kotlin协程进阶",
+                description = "研究Flow和Channel的高级用法",
+                priority = com.example.test2.data.model.TaskPriority.MEDIUM,
+                dueDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 5) }.time
             ),
+            
             Task(
                 id = 3,
-                title = "准备团队会议",
-                description = "整理本周工作进展，准备周五的团队会议演示"
+                title = "阅读《原子习惯》",
+                description = "阅读并完成第6-8章的读书笔记",
+                priority = com.example.test2.data.model.TaskPriority.LOW,
+                dueDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 3) }.time
             )
         )
     }

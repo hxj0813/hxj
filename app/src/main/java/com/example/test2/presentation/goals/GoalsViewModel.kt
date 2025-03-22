@@ -103,7 +103,7 @@ class GoalsViewModel : ViewModel() {
             _state.update { it.copy(isLoading = true) }
             
             // 模拟网络延迟
-            kotlinx.coroutines.delay(500)
+           // kotlinx.coroutines.delay(500)
             
             // 更新状态
             _state.update { currentState ->

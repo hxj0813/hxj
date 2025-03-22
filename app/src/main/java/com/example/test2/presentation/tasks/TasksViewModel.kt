@@ -46,7 +46,6 @@ class TasksViewModel : ViewModel() {
             is TasksEvent.LoadGoals -> loadGoals()
             is TasksEvent.SelectDate -> selectDate(event.date)
             is TasksEvent.FilterTasks -> filterTasks(event.filter)
-            is TasksEvent.UpdateSearchQuery -> updateSearchQuery(event.query)
             is TasksEvent.AddTask -> addTask(event.task)
             is TasksEvent.UpdateTask -> updateTask(event.task)
             is TasksEvent.DeleteTask -> deleteTask(event.taskId)
@@ -131,26 +130,6 @@ class TasksViewModel : ViewModel() {
             
             it.copy(
                 currentFilter = filter,
-                filteredTasks = applySearchFilter(filteredTasks, it.searchQuery)
-            )
-        }
-    }
-
-    /**
-     * 更新搜索查询
-     */
-    private fun updateSearchQuery(query: String) {
-        _state.update {
-            val filteredTasks = applySearchFilter(
-                when (it.currentFilter) {
-                    TasksState.Filter.ALL -> it.tasks
-                    else -> filterTasks(it.tasks, it.currentFilter)
-                },
-                query
-            )
-            
-            it.copy(
-                searchQuery = query,
                 filteredTasks = filteredTasks
             )
         }
@@ -339,26 +318,12 @@ class TasksViewModel : ViewModel() {
     }
 
     /**
-     * 应用搜索过滤器
-     */
-    private fun applySearchFilter(tasks: List<Task>, query: String): List<Task> {
-        if (query.isBlank()) return tasks
-        
-        val lowerCaseQuery = query.trim().lowercase()
-        return tasks.filter { task -> 
-            task.title.lowercase().contains(lowerCaseQuery) ||
-            task.description?.lowercase()?.contains(lowerCaseQuery) ?: false
-        }
-    }
-
-    /**
      * 根据当前条件过滤任务
      */
     private fun filterTasksByCurrentCriteria(tasks: List<Task>): List<Task> {
         val state = _state.value
         val filteredByDate = filterTasksByDate(tasks, state.selectedDate)
-        val filteredByOtherCriteria = filterTasks(filteredByDate, state.currentFilter)
-        return applySearchFilter(filteredByOtherCriteria, state.searchQuery)
+        return filterTasks(filteredByDate, state.currentFilter)
     }
 
     /**
@@ -497,7 +462,7 @@ class TasksViewModel : ViewModel() {
                 description = "阅读完成《原子习惯》这本书，并做好读书笔记",
                 isLongTerm = false,
                 isImportant = false,
-                progress = 0.8f,
+                progress = 0.4f,
                 deadline = Date(System.currentTimeMillis() + 5 * 24 * 60 * 60 * 1000)
             )
         )

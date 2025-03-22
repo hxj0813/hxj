@@ -16,7 +16,6 @@ data class TimeTrackingState(
     val selectedCategory: TimeCategory? = null,
     val selectedDate: Date = Date(),
     val dateRange: Pair<Date, Date>? = null,
-    val searchQuery: String = "",
     val isLoading: Boolean = true,
     val error: String? = null,
     val showEntryDialog: Boolean = false,

@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +30,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -60,6 +58,7 @@ import com.example.test2.presentation.timetracking.components.StatisticsView
 import com.example.test2.presentation.timetracking.components.TimeEntryCard
 import com.example.test2.presentation.timetracking.components.TimeEntryDialog
 import com.example.test2.presentation.timetracking.components.TimerView
+import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -145,31 +144,11 @@ fun TimeTrackingScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // 搜索栏
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = { query ->
-                    viewModel.onEvent(TimeTrackingEvent.UpdateSearchQuery(query))
-                },
-                placeholder = { Text("搜索时间记录...") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "搜索"
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-            
             // 类别选择器
             CategorySelector(
                 selectedCategory = state.selectedCategory,
                 onCategorySelected = { category ->
-                    viewModel.onEvent(TimeTrackingEvent.FilterByCategory(category))
+                    viewModel.onEvent(TimeTrackingEvent.FilterCategory(category))
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -180,7 +159,7 @@ fun TimeTrackingScreen(
             TimerView(
                 ongoingEntry = state.ongoingEntry,
                 onStopTimer = {
-                    viewModel.onEvent(TimeTrackingEvent.StopTimeEntry)
+                    viewModel.onEvent(TimeTrackingEvent.StopTimeEntry())
                 },
                 onStartTimer = { timeEntry ->
                     viewModel.onEvent(TimeTrackingEvent.StartTimeEntry(timeEntry))
@@ -198,62 +177,51 @@ fun TimeTrackingScreen(
                     .padding(vertical = 8.dp)
             )
             
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // 时间条目列表标题
+            // 日期显示
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
                 Text(
-                    text = "今日记录",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // 选中的日期显示
-                val dateFormat = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
-                Text(
-                    text = dateFormat.format(state.selectedDate ?: Date()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    text = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(state.selectedDate),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
+            
+            Divider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
             
             // 时间条目列表
             if (state.isLoading) {
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-            } else if (state.error != null) {
-                Text(
-                    text = state.error,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp)
-                )
             } else if (state.filteredEntries.isEmpty()) {
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
                 ) {
                     Text(
-                        text = "暂无时间记录",
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center
+                        text = "今天还没有时间记录\n点击底部按钮添加",
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
                 }
             } else {
@@ -266,18 +234,18 @@ fun TimeTrackingScreen(
                 ) {
                     items(
                         items = state.filteredEntries,
-                        key = { it.id ?: it.hashCode() }
+                        key = { it.id }
                     ) { timeEntry ->
                         TimeEntryCard(
                             timeEntry = timeEntry,
-                            onClick = {
+                            onClick = { 
                                 viewModel.onEvent(TimeTrackingEvent.SelectTimeEntry(timeEntry))
                             },
                             onEdit = {
                                 viewModel.onEvent(TimeTrackingEvent.ShowEditEntryDialog(timeEntry))
                             },
                             onDelete = {
-                                viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id!!))
+                                viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id))
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -291,47 +259,85 @@ fun TimeTrackingScreen(
 }
 
 /**
- * 类别选择器
+ * 分类选择器
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategorySelector(
     selectedCategory: TimeCategory?,
     onCategorySelected: (TimeCategory?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val categories = listOf(null) + TimeCategory.values().toList()
-    
-    SingleChoiceSegmentedButtonRow(
+    Column(
         modifier = modifier
     ) {
-        categories.forEachIndexed { index, category ->
-            SegmentedButton(
-                shape = SegmentedButtonDefaults.shape,
-                selected = selectedCategory == category,
-                onClick = { onCategorySelected(category) },
-                label = {
-                    if (category == null) {
-                        Text("全部")
-                    } else {
-                        Text(getCategoryName(category))
-                    }
-                }
+        Text(
+            text = "按分类筛选",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
+        
+        // 分类选择行
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+        ) {
+            // 全部分类选项
+            CategoryChip(
+                category = null,
+                isSelected = selectedCategory == null,
+                onClick = { onCategorySelected(null) }
             )
+            
+            // 各分类选项
+            TimeCategory.values().forEach { category ->
+                CategoryChip(
+                    category = category,
+                    isSelected = selectedCategory == category,
+                    onClick = { onCategorySelected(category) }
+                )
+            }
         }
     }
 }
 
 /**
- * 获取分类的名称（与其他组件保持一致）
+ * 分类选择芯片
  */
-private fun getCategoryName(category: TimeCategory): String {
-    return when (category) {
-        TimeCategory.WORK -> "工作"
-        TimeCategory.STUDY -> "学习"
-        TimeCategory.EXERCISE -> "锻炼"
-        TimeCategory.REST -> "休息"
-        TimeCategory.ENTERTAIN -> "娱乐"
-        TimeCategory.OTHER -> "其他"
+@Composable
+fun CategoryChip(
+    category: TimeCategory?,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    
+    val textColor = if (isSelected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = category?.let { TimeTrackingUtils.getCategoryName(it) } ?: "全部",
+            color = textColor,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+            )
+        )
     }
 } 

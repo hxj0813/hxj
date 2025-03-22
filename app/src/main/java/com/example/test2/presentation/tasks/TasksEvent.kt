@@ -23,11 +23,6 @@ sealed class TasksEvent {
     data class FilterTasks(val filter: TasksState.Filter) : TasksEvent()
     
     /**
-     * 更新搜索查询
-     */
-    data class UpdateSearchQuery(val query: String) : TasksEvent()
-    
-    /**
      * 添加任务
      */
     data class AddTask(val task: Task) : TasksEvent()

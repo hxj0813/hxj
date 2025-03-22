@@ -12,7 +12,6 @@ import java.util.Date
  * @property tasks 全部任务列表
  * @property filteredTasks 筛选后的任务列表
  * @property selectedDate 选中的日期
- * @property searchQuery 搜索查询
  * @property currentFilter 当前筛选条件
  * @property isLoading 是否正在加载
  * @property error 错误信息
@@ -24,7 +23,6 @@ data class TasksState(
     val tasks: List<Task> = emptyList(),
     val filteredTasks: List<Task> = emptyList(),
     val selectedDate: Date = Date(),
-    val searchQuery: String = "",
     val currentFilter: Filter = Filter.ALL,
     val isLoading: Boolean = false,
     val error: String? = null,

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -50,10 +52,12 @@ import androidx.compose.ui.window.Dialog
 import com.example.test2.data.model.Task
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
+import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 /**
  * 时间条目对话框，用于添加或编辑时间追踪记录
@@ -201,7 +205,7 @@ fun TimeEntryDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = getCategoryName(selectedCategory),
+                        value = TimeTrackingUtils.getCategoryName(selectedCategory),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("分类") },
@@ -224,17 +228,30 @@ fun TimeEntryDialog(
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val (color, _) = getCategoryColors(category)
+                                        val (color, _) = TimeTrackingUtils.getCategoryColors(category)
                                         Box(
                                             modifier = Modifier
-                                                .size(16.dp)
+                                                .padding(horizontal = 4.dp, vertical = 8.dp)
+                                                .size(40.dp)
                                                 .clip(CircleShape)
-                                                .background(color)
-                                        )
+                                                .background(if (selectedCategory == category) color else color.copy(alpha = 0.3f))
+                                                .clickable { selectedCategory = category }
+                                        ) {
+                                            if (selectedCategory == category) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "已选择",
+                                                    tint = Color.White,
+                                                    modifier = Modifier
+                                                        .align(Alignment.Center)
+                                                        .size(20.dp)
+                                                )
+                                            }
+                                        }
                                         
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
                                         
-                                        Text(getCategoryName(category))
+                                        Text(TimeTrackingUtils.getCategoryName(category))
                                     }
                                 },
                                 onClick = {
@@ -402,21 +419,13 @@ fun TimeEntryDialog(
                 // 保存按钮
                 Button(
                     onClick = {
-                        // 计算持续时间（如果有结束时间）
-                        val duration = if (endDate != null && startDate.before(endDate)) {
-                            (endDate!!.time - startDate.time) / 1000
-                        } else {
-                            0L
-                        }
-                        
                         val timeEntry = TimeEntry(
-                            id = initialTimeEntry?.id,
+                            id = initialTimeEntry?.id ?: UUID.randomUUID().mostSignificantBits and Long.MAX_VALUE,
                             title = titleText,
                             description = description.takeIf { it.isNotBlank() },
                             category = selectedCategory,
                             startTime = startDate,
                             endTime = endDate,
-                            duration = duration,
                             taskId = selectedTaskId,
                             createdAt = initialTimeEntry?.createdAt ?: Date()
                         )

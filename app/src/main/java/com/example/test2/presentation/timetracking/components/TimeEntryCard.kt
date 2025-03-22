@@ -32,8 +32,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
+import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -71,7 +73,7 @@ fun TimeEntryCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 分类颜色指示器
-            val (backgroundColor, _) = getCategoryColors(timeEntry.category)
+            val (backgroundColor, _) = TimeTrackingUtils.getCategoryColors(timeEntry.category)
             Box(
                 modifier = Modifier
                     .size(48.dp)

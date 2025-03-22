@@ -34,11 +34,6 @@ sealed class TimeTrackingEvent {
     data class SetDateRange(val startDate: Date, val endDate: Date) : TimeTrackingEvent()
     
     /**
-     * 更新搜索查询
-     */
-    data class UpdateSearchQuery(val query: String) : TimeTrackingEvent()
-    
-    /**
      * 开始新的时间条目
      */
     data class StartTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
@@ -62,6 +57,11 @@ sealed class TimeTrackingEvent {
      * 删除时间条目
      */
     data class DeleteTimeEntry(val id: Long) : TimeTrackingEvent()
+    
+    /**
+     * 选择时间条目
+     */
+    data class SelectTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
     
     /**
      * 显示添加时间条目对话框

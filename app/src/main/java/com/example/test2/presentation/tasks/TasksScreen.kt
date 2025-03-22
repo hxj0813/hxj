@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,11 +35,9 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -176,27 +173,6 @@ fun TasksScreen(
                                 )
                             }
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // 搜索框
-                        OutlinedTextField(
-                            value = state.searchQuery,
-                            onValueChange = { query ->
-                                viewModel.onEvent(TasksEvent.UpdateSearchQuery(query))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("搜索任务...") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "搜索",
-                                    tint = Color.Gray
-                                )
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            singleLine = true
-                        )
                     }
                 }
                 
