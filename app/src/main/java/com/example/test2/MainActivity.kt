@@ -3,45 +3,78 @@ package com.example.test2
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.test2.presentation.habits.HabitScreen
+import com.example.test2.presentation.habits.NotesScreen
 import com.example.test2.ui.theme.Test2Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             Test2Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainApp()
                 }
             }
         }
     }
 }
 
+/**
+ * 应用主界面组合函数
+ */
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Test2Theme {
-        Greeting("Android")
+fun MainApp() {
+    val navController = rememberNavController()
+    
+    NavHost(navController = navController, startDestination = "notes") {
+        composable("habits") {
+            HabitScreen(
+                onNavigateToNotes = {
+                    navController.navigate("notes")
+                },
+                onNavigateToHabitNotes = { habitId ->
+                    navController.navigate("notes/$habitId")
+                }
+            )
+        }
+        
+        composable("notes") {
+            NotesScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(
+            route = "notes/{habitId}",
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val habitId = backStackEntry.arguments?.getString("habitId")
+            NotesScreen(
+                habitId = habitId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
