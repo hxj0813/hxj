@@ -50,6 +50,7 @@ class TimeTrackingViewModel : ViewModel() {
             is TimeTrackingEvent.ShowFilterDialog -> showFilterDialog()
             is TimeTrackingEvent.DismissDialog -> dismissDialog()
             is TimeTrackingEvent.CalculateStatistics -> calculateStatistics()
+            is TimeTrackingEvent.SelectTimeEntry -> selectTimeEntry(event.timeEntry)
         }
     }
     
@@ -313,6 +314,13 @@ class TimeTrackingViewModel : ViewModel() {
                 selectedEntry = null
             )
         }
+    }
+    
+    /**
+     * 选择时间条目
+     */
+    private fun selectTimeEntry(timeEntry: TimeEntry) {
+        _state.update { it.copy(selectedEntry = timeEntry) }
     }
     
     /**

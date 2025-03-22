@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.outlined.Notes
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,6 +47,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,31 +63,42 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.test2.data.model.Habit
 import com.example.test2.data.model.HabitBadge
+import com.example.test2.data.model.HabitBadgeType
 import com.example.test2.data.model.HabitCategory
+import com.example.test2.data.model.HabitFrequency
 import com.example.test2.presentation.habits.components.BadgeDetailDialog
 import com.example.test2.presentation.habits.components.CheckInButton
 import com.example.test2.presentation.habits.components.HabitBadgeView
 import com.example.test2.presentation.habits.components.HabitProgressBar
+import com.example.test2.presentation.components.LoadingView
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.Calendar
 import java.util.Date
+import java.util.UUID
 
 /**
  * 习惯养成主屏幕
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HabitScreen() {
+fun HabitScreen(
+    onNavigateToNotes: () -> Unit = {},
+    onNavigateToHabitNotes: (String) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     // 状态
     var isLoading by remember { mutableStateOf(true) }
-    var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
+    val habits = remember { mutableStateListOf<Habit>() }
     var selectedHabit by remember { mutableStateOf<Habit?>(null) }
-    var showBadgeDialog by remember { mutableStateOf<HabitBadge?>(null) }
+    var showBadgeDialog by remember { mutableStateOf(false) }
+    var selectedBadge by remember { mutableStateOf<HabitBadge?>(null) }
     
     // 模拟加载数据
-    LaunchedEffect(Unit) {
-        delay(1000)
-        habits = generateSampleHabits()
+    LaunchedEffect(key1 = true) {
+        delay(1500) // 模拟加载延迟
+        habits.addAll(generateSampleHabits())
         isLoading = false
     }
     
@@ -111,7 +127,8 @@ fun HabitScreen() {
                 },
                 onClick = { /* TODO: 实现添加习惯功能 */ }
             )
-        }
+        },
+        modifier = modifier
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -120,7 +137,7 @@ fun HabitScreen() {
         ) {
             if (isLoading) {
                 // 加载中
-                LoadingView()
+                LoadingView("加载习惯列表...")
             } else if (habits.isEmpty()) {
                 // 空状态
                 EmptyHabitsView()
@@ -136,11 +153,70 @@ fun HabitScreen() {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     
+                    // 笔记入口
+                    item {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Notes,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    
+                                    Column {
+                                        Text(
+                                            text = "反思笔记",
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        
+                                        Text(
+                                            text = "记录你的习惯养成感受",
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                                
+                                IconButton(onClick = { onNavigateToNotes() }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Notes,
+                                        contentDescription = "查看所有笔记",
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
                     items(habits) { habit ->
                         HabitCard(
                             habit = habit,
                             onClick = { selectedHabit = habit },
-                            onBadgeClick = { badge -> showBadgeDialog = badge }
+                            onBadgeClick = { badge ->
+                                selectedBadge = badge
+                                showBadgeDialog = true
+                            },
+                            onNotesClick = { 
+                                onNavigateToHabitNotes(habit.id)
+                            }
                         )
                     }
                     
@@ -155,54 +231,54 @@ fun HabitScreen() {
                 HabitDetailDialog(
                     habit = selectedHabit!!,
                     onCheckIn = {
-                        // 更新打卡状态
-                        habits = habits.map { 
-                            if (it.id == selectedHabit!!.id) {
-                                // 模拟打卡，添加今天的日期到打卡记录
-                                val newCheckIns = it.checkInRecords + Date()
-                                it.copy(
-                                    checkInRecords = newCheckIns,
-                                    totalCheckIns = newCheckIns.size,
-                                    currentStreak = it.currentStreak + 1,
-                                    longestStreak = maxOf(it.longestStreak, it.currentStreak + 1),
-                                    completionRate = newCheckIns.size.toFloat() / it.targetDays
-                                )
-                            } else {
-                                it
-                            }
+                        val index = habits.indexOfFirst { it.id == selectedHabit!!.id }
+                        if (index >= 0) {
+                            // 创建带有新签到记录的习惯副本
+                            val updatedHabit = selectedHabit!!.copy(
+                                checkInRecords = selectedHabit!!.checkInRecords + Date()
+                            )
+                            // 更新列表
+                            habits[index] = updatedHabit
+                            // 更新选中的习惯
+                            selectedHabit = updatedHabit
                         }
                     },
                     onCancelCheckIn = {
-                        // 取消今天的打卡
-                        habits = habits.map { 
-                            if (it.id == selectedHabit!!.id) {
-                                // 模拟取消打卡，移除今天的日期
-                                val today = Date()
-                                val newCheckIns = it.checkInRecords.filterNot { date -> 
-                                    Habit.isSameDay(date, today) 
+                        val index = habits.indexOfFirst { it.id == selectedHabit!!.id }
+                        if (index >= 0) {
+                            // 创建移除今日签到记录的习惯副本
+                            val today = Date()
+                            val updatedHabit = selectedHabit!!.copy(
+                                checkInRecords = selectedHabit!!.checkInRecords.filterNot { record ->
+                                    Habit.isSameDay(record, today)
                                 }
-                                it.copy(
-                                    checkInRecords = newCheckIns,
-                                    totalCheckIns = newCheckIns.size,
-                                    currentStreak = maxOf(0, it.currentStreak - 1),
-                                    completionRate = newCheckIns.size.toFloat() / it.targetDays
-                                )
-                            } else {
-                                it
-                            }
+                            )
+                            // 更新列表
+                            habits[index] = updatedHabit
+                            // 更新选中的习惯
+                            selectedHabit = updatedHabit
                         }
                     },
-                    onBadgeClick = { badge -> showBadgeDialog = badge },
+                    onViewNotes = {
+                        selectedHabit?.let { habit ->
+                            onNavigateToHabitNotes(habit.id)
+                            selectedHabit = null
+                        }
+                    },
+                    onBadgeClick = { badge ->
+                        selectedBadge = badge
+                        showBadgeDialog = true
+                    },
                     onDismiss = { selectedHabit = null }
                 )
             }
             
             // 显示徽章详情对话框
-            if (showBadgeDialog != null) {
-                Dialog(onDismissRequest = { showBadgeDialog = null }) {
+            if (showBadgeDialog) {
+                Dialog(onDismissRequest = { showBadgeDialog = false }) {
                     BadgeDetailDialog(
-                        badge = showBadgeDialog!!,
-                        onDismiss = { showBadgeDialog = null }
+                        badge = selectedBadge!!,
+                        onDismiss = { showBadgeDialog = false }
                     )
                 }
             }
@@ -217,7 +293,8 @@ fun HabitScreen() {
 fun HabitCard(
     habit: Habit,
     onClick: () -> Unit,
-    onBadgeClick: (HabitBadge) -> Unit
+    onBadgeClick: (HabitBadge) -> Unit,
+    onNotesClick: () -> Unit
 ) {
     val habitColor = Color(habit.color)
     val progress = habit.calculateProgress()
@@ -302,7 +379,8 @@ fun HabitDetailDialog(
     habit: Habit,
     onCheckIn: () -> Unit,
     onCancelCheckIn: () -> Unit,
-    onBadgeClick: (HabitBadge) -> Unit,
+    onViewNotes: () -> Unit,
+    onBadgeClick: (HabitBadge) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val habitColor = Color(habit.color)
@@ -449,30 +527,6 @@ fun StatItem(
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
-    }
-}
-
-/**
- * 加载中视图
- */
-@Composable
-fun LoadingView() {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator()
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "加载中...",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
     }
 }
 

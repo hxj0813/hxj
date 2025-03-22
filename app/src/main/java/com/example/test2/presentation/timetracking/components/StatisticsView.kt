@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.presentation.timetracking.TimeTrackingState
+import com.example.test2.presentation.timetracking.TimeTrackingUtils
 
 /**
  * 时间统计视图，用于显示时间分配情况
@@ -73,20 +74,20 @@ fun StatisticsView(
             
             // 总时间统计
             TotalTimeStats(
-                totalHours = statistics.totalDurationInHours,
-                entriesCount = statistics.totalEntries
+                totalHours = statistics.totalDuration / 3600.0,
+                entriesCount = statistics.categoryBreakdown.values.sum().toInt() / 60
             )
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            if (statistics.categoryDurations.isNotEmpty()) {
+            if (statistics.categoryBreakdown.isNotEmpty()) {
                 // 饼图
-                PieChart(categoryDurations = statistics.categoryDurations)
+                PieChart(categoryDurations = statistics.categoryBreakdown)
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // 分类图例
-                CategoryLegend(categoryDurations = statistics.categoryDurations)
+                CategoryLegend(categoryDurations = statistics.categoryBreakdown)
             } else {
                 Text(
                     text = "暂无数据",
@@ -197,6 +198,16 @@ fun PieChart(
         animationTriggered = true
     }
     
+    // 提前计算所有分类的动画角度
+    val animatedSweepAngles = sortedCategories.associate { category ->
+        val sweepAngle = sweepAngles[category] ?: 0f
+        category to animateFloatAsState(
+            targetValue = if (animationTriggered) sweepAngle else 0f,
+            animationSpec = tween(durationMillis = 800, delayMillis = 100),
+            label = "SweepAngleAnimation${category.name}"
+        ).value
+    }
+    
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -216,14 +227,10 @@ fun PieChart(
             sortedCategories.forEach { category ->
                 val sweepAngle = sweepAngles[category] ?: 0f
                 if (sweepAngle > 0) {
-                    val (color, _) = getCategoryColors(category)
+                    val (color, _) = TimeTrackingUtils.getCategoryColors(category)
                     
-                    // 每个分类的动画进度
-                    val animatedSweepAngle by animateFloatAsState(
-                        targetValue = if (animationTriggered) sweepAngle else 0f,
-                        animationSpec = tween(durationMillis = 800, delayMillis = 100),
-                        label = "SweepAngleAnimation"
-                    )
+                    // 使用预先计算的动画角度
+                    val animatedSweepAngle = animatedSweepAngles[category] ?: 0f
                     
                     // 绘制扇形
                     drawArc(
@@ -286,7 +293,7 @@ fun CategoryLegend(
     
     Column(modifier = modifier.fillMaxWidth()) {
         sortedEntries.forEach { (category, duration) ->
-            val (color, _) = getCategoryColors(category)
+            val (color, _) = TimeTrackingUtils.getCategoryColors(category)
             val percentage = (duration.toFloat() / categoryDurations.values.sum().toFloat()) * 100
             
             Row(
@@ -306,7 +313,7 @@ fun CategoryLegend(
                 
                 // 分类名称
                 Text(
-                    text = getCategoryName(category),
+                    text = TimeTrackingUtils.getCategoryName(category),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -328,34 +335,6 @@ fun CategoryLegend(
                 )
             }
         }
-    }
-}
-
-/**
- * 获取分类的颜色，与TimerView中保持一致
- */
-private fun getCategoryColors(category: TimeCategory): Pair<Color, Color> {
-    return when (category) {
-        TimeCategory.WORK -> Pair(Color(0xFF4285F4), Color(0xFF4285F4))      // 蓝色
-        TimeCategory.STUDY -> Pair(Color(0xFF0F9D58), Color(0xFF0F9D58))     // 绿色
-        TimeCategory.EXERCISE -> Pair(Color(0xFFF4B400), Color(0xFFF4B400))  // 黄色
-        TimeCategory.REST -> Pair(Color(0xFF7986CB), Color(0xFF7986CB))      // 淡紫色
-        TimeCategory.ENTERTAIN -> Pair(Color(0xFFDB4437), Color(0xFFDB4437)) // 红色
-        TimeCategory.OTHER -> Pair(Color(0xFF9E9E9E), Color(0xFF9E9E9E))     // 灰色
-    }
-}
-
-/**
- * 获取分类的名称，与TimerView中保持一致
- */
-private fun getCategoryName(category: TimeCategory): String {
-    return when (category) {
-        TimeCategory.WORK -> "工作"
-        TimeCategory.STUDY -> "学习"
-        TimeCategory.EXERCISE -> "锻炼"
-        TimeCategory.REST -> "休息"
-        TimeCategory.ENTERTAIN -> "娱乐"
-        TimeCategory.OTHER -> "其他"
     }
 }
 

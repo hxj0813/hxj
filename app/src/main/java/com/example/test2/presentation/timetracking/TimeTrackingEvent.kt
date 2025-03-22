@@ -64,6 +64,11 @@ sealed class TimeTrackingEvent {
     data class DeleteTimeEntry(val id: Long) : TimeTrackingEvent()
     
     /**
+     * 选择时间条目
+     */
+    data class SelectTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
+    
+    /**
      * 显示添加时间条目对话框
      */
     data object ShowAddEntryDialog : TimeTrackingEvent()

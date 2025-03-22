@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
 import com.example.test2.presentation.theme.PrimaryLight
+import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import kotlinx.coroutines.delay
 import java.util.Date
 import kotlin.time.Duration.Companion.seconds
@@ -178,7 +179,7 @@ fun CategoryChip(
     category: TimeCategory,
     modifier: Modifier = Modifier
 ) {
-    val (backgroundColor, textColor) = getCategoryColors(category)
+    val (backgroundColor, textColor) = TimeTrackingUtils.getCategoryColors(category)
     
     Box(
         modifier = modifier
@@ -187,7 +188,7 @@ fun CategoryChip(
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
-            text = getCategoryName(category),
+            text = TimeTrackingUtils.getCategoryName(category),
             color = textColor,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
@@ -244,7 +245,7 @@ fun QuickStartButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val (backgroundColor, _) = getCategoryColors(category)
+    val (backgroundColor, _) = TimeTrackingUtils.getCategoryColors(category)
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -259,7 +260,7 @@ fun QuickStartButton(
         ) {
             Icon(
                 imageVector = Icons.Default.PlayArrow,
-                contentDescription = "开始 ${getCategoryName(category)}",
+                contentDescription = "开始 ${TimeTrackingUtils.getCategoryName(category)}",
                 tint = backgroundColor,
                 modifier = Modifier.size(24.dp)
             )
@@ -268,38 +269,10 @@ fun QuickStartButton(
         Spacer(modifier = Modifier.height(4.dp))
         
         Text(
-            text = getCategoryName(category),
+            text = TimeTrackingUtils.getCategoryName(category),
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
-    }
-}
-
-/**
- * 获取分类的颜色
- */
-private fun getCategoryColors(category: TimeCategory): Pair<Color, Color> {
-    return when (category) {
-        TimeCategory.WORK -> Pair(Color(0xFF4285F4), Color(0xFF4285F4))      // 蓝色
-        TimeCategory.STUDY -> Pair(Color(0xFF0F9D58), Color(0xFF0F9D58))     // 绿色
-        TimeCategory.EXERCISE -> Pair(Color(0xFFF4B400), Color(0xFFF4B400))  // 黄色
-        TimeCategory.REST -> Pair(Color(0xFF7986CB), Color(0xFF7986CB))      // 淡紫色
-        TimeCategory.ENTERTAIN -> Pair(Color(0xFFDB4437), Color(0xFFDB4437)) // 红色
-        TimeCategory.OTHER -> Pair(Color(0xFF9E9E9E), Color(0xFF9E9E9E))     // 灰色
-    }
-}
-
-/**
- * 获取分类的名称
- */
-private fun getCategoryName(category: TimeCategory): String {
-    return when (category) {
-        TimeCategory.WORK -> "工作"
-        TimeCategory.STUDY -> "学习"
-        TimeCategory.EXERCISE -> "锻炼"
-        TimeCategory.REST -> "休息"
-        TimeCategory.ENTERTAIN -> "娱乐"
-        TimeCategory.OTHER -> "其他"
     }
 }
 

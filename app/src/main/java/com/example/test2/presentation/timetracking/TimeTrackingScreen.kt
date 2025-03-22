@@ -60,6 +60,7 @@ import com.example.test2.presentation.timetracking.components.StatisticsView
 import com.example.test2.presentation.timetracking.components.TimeEntryCard
 import com.example.test2.presentation.timetracking.components.TimeEntryDialog
 import com.example.test2.presentation.timetracking.components.TimerView
+import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -169,7 +170,7 @@ fun TimeTrackingScreen(
             CategorySelector(
                 selectedCategory = state.selectedCategory,
                 onCategorySelected = { category ->
-                    viewModel.onEvent(TimeTrackingEvent.FilterByCategory(category))
+                    viewModel.onEvent(TimeTrackingEvent.FilterCategory(category))
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -180,7 +181,7 @@ fun TimeTrackingScreen(
             TimerView(
                 ongoingEntry = state.ongoingEntry,
                 onStopTimer = {
-                    viewModel.onEvent(TimeTrackingEvent.StopTimeEntry)
+                    viewModel.onEvent(TimeTrackingEvent.StopTimeEntry())
                 },
                 onStartTimer = { timeEntry ->
                     viewModel.onEvent(TimeTrackingEvent.StartTimeEntry(timeEntry))
@@ -236,7 +237,7 @@ fun TimeTrackingScreen(
                 }
             } else if (state.error != null) {
                 Text(
-                    text = state.error,
+                    text = state.error ?: "发生未知错误",
                     color = MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
@@ -307,31 +308,20 @@ fun CategorySelector(
     ) {
         categories.forEachIndexed { index, category ->
             SegmentedButton(
-                shape = SegmentedButtonDefaults.shape,
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = categories.size
+                ),
                 selected = selectedCategory == category,
                 onClick = { onCategorySelected(category) },
                 label = {
                     if (category == null) {
                         Text("全部")
                     } else {
-                        Text(getCategoryName(category))
+                        Text(TimeTrackingUtils.getCategoryName(category))
                     }
                 }
             )
         }
-    }
-}
-
-/**
- * 获取分类的名称（与其他组件保持一致）
- */
-private fun getCategoryName(category: TimeCategory): String {
-    return when (category) {
-        TimeCategory.WORK -> "工作"
-        TimeCategory.STUDY -> "学习"
-        TimeCategory.EXERCISE -> "锻炼"
-        TimeCategory.REST -> "休息"
-        TimeCategory.ENTERTAIN -> "娱乐"
-        TimeCategory.OTHER -> "其他"
     }
 } 
