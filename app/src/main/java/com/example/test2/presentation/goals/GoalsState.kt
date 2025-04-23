@@ -8,7 +8,6 @@ import com.example.test2.data.model.Goal
 data class GoalsState(
     val goals: List<Goal> = emptyList(),
     val filteredGoals: List<Goal> = emptyList(),
-    val searchQuery: String = "",
     val currentFilter: Filter = Filter.ALL,
     val isLoading: Boolean = false,
     val error: String? = null,

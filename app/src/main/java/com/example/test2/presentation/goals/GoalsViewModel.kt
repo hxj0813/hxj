@@ -83,7 +83,6 @@ class GoalsViewModel : ViewModel() {
         when (event) {
             is GoalsEvent.LoadGoals -> loadGoals()
             is GoalsEvent.FilterGoals -> filterGoals(event.filter)
-            is GoalsEvent.UpdateSearchQuery -> updateSearchQuery(event.query)
             is GoalsEvent.AddGoal -> addGoal(event.goal)
             is GoalsEvent.UpdateGoal -> updateGoal(event.goal)
             is GoalsEvent.DeleteGoal -> deleteGoal(event.goalId)
@@ -132,39 +131,15 @@ class GoalsViewModel : ViewModel() {
      * 应用过滤器
      */
     private fun applyFilters(goals: List<Goal>, filter: GoalsState.Filter): List<Goal> {
-        val query = _state.value.searchQuery.lowercase()
-        
-        // 首先应用搜索查询
-        val searchFiltered = if (query.isBlank()) {
-            goals
-        } else {
-            goals.filter { goal ->
-                goal.title.lowercase().contains(query) || 
-                goal.description.lowercase().contains(query)
-            }
-        }
-        
-        // 然后应用类别过滤
+        // 应用类别过滤
         return when (filter) {
-            GoalsState.Filter.ALL -> searchFiltered
-            GoalsState.Filter.IMPORTANT -> searchFiltered.filter { it.isImportant }
-            GoalsState.Filter.LONG_TERM -> searchFiltered.filter { it.isLongTerm }
-            GoalsState.Filter.SHORT_TERM -> searchFiltered.filter { !it.isLongTerm }
-            GoalsState.Filter.COMPLETED -> searchFiltered.filter { it.isCompleted }
-            GoalsState.Filter.OVERDUE -> searchFiltered.filter { !it.isCompleted && it.isOverdue() }
-            GoalsState.Filter.UPCOMING -> searchFiltered.filter { !it.isCompleted && it.isUpcoming() }
-        }
-    }
-
-    /**
-     * 更新搜索查询
-     */
-    private fun updateSearchQuery(query: String) {
-        _state.update { currentState ->
-            currentState.copy(
-                searchQuery = query,
-                filteredGoals = applyFilters(currentState.goals, currentState.currentFilter)
-            )
+            GoalsState.Filter.ALL -> goals
+            GoalsState.Filter.IMPORTANT -> goals.filter { it.isImportant }
+            GoalsState.Filter.LONG_TERM -> goals.filter { it.isLongTerm }
+            GoalsState.Filter.SHORT_TERM -> goals.filter { !it.isLongTerm }
+            GoalsState.Filter.COMPLETED -> goals.filter { it.isCompleted }
+            GoalsState.Filter.OVERDUE -> goals.filter { !it.isCompleted && it.isOverdue() }
+            GoalsState.Filter.UPCOMING -> goals.filter { !it.isCompleted && it.isUpcoming() }
         }
     }
 

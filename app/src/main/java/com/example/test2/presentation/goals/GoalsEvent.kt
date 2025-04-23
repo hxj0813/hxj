@@ -17,11 +17,6 @@ sealed class GoalsEvent {
     data class FilterGoals(val filter: GoalsState.Filter) : GoalsEvent()
     
     /**
-     * 更新搜索查询
-     */
-    data class UpdateSearchQuery(val query: String) : GoalsEvent()
-    
-    /**
      * 添加目标
      */
     data class AddGoal(val goal: Goal) : GoalsEvent()

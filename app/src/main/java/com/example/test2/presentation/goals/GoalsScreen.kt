@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,7 +35,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -70,12 +68,10 @@ fun GoalsScreen(
     val state by viewModel.state.collectAsState()
     val lazyListState = rememberLazyListState()
 
-    // 构建过滤器选项
+    // 构建过滤器选项，只保留5个分类
     val filters = listOf(
         GoalsState.Filter.ALL to "所有目标",
         GoalsState.Filter.IMPORTANT to "重要目标",
-        GoalsState.Filter.LONG_TERM to "长期目标",
-        GoalsState.Filter.SHORT_TERM to "短期目标",
         GoalsState.Filter.UPCOMING to "即将到期",
         GoalsState.Filter.OVERDUE to "已逾期",
         GoalsState.Filter.COMPLETED to "已完成"
@@ -102,7 +98,7 @@ fun GoalsScreen(
         ) {
             // 主内容
             Column(modifier = Modifier.fillMaxSize()) {
-                // 标题和搜索
+                // 标题
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -126,25 +122,6 @@ fun GoalsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextField(
-                            value = state.searchQuery,
-                            onValueChange = { query ->
-                                viewModel.onEvent(GoalsEvent.UpdateSearchQuery(query))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("搜索目标...") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "搜索"
-                                )
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            singleLine = true
                         )
                     }
                 }
@@ -189,10 +166,9 @@ fun GoalsScreen(
                                     GoalsState.Filter.ALL -> "您还没有添加任何目标"
                                     GoalsState.Filter.COMPLETED -> "没有已完成的目标"
                                     GoalsState.Filter.IMPORTANT -> "没有标记为重要的目标"
-                                    GoalsState.Filter.LONG_TERM -> "没有长期目标"
-                                    GoalsState.Filter.SHORT_TERM -> "没有短期目标"
                                     GoalsState.Filter.UPCOMING -> "没有即将到期的目标"
                                     GoalsState.Filter.OVERDUE -> "没有逾期的目标"
+                                    else -> "没有满足条件的目标"
                                 },
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = Color.Gray
@@ -202,12 +178,9 @@ fun GoalsScreen(
                         // 目标列表
                         LazyColumn(
                             state = lazyListState,
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                bottom = 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             items(
                                 items = state.filteredGoals,
@@ -218,13 +191,19 @@ fun GoalsScreen(
                                     onEditClick = {
                                         viewModel.onEvent(GoalsEvent.ShowEditGoalDialog(goal))
                                     },
-                                    onDeleteClick = {
-                                        viewModel.onEvent(GoalsEvent.DeleteGoal(goal.id))
-                                    },
                                     onToggleCompletion = { isCompleted ->
                                         viewModel.onEvent(GoalsEvent.CompleteGoal(goal.id, isCompleted))
                                     },
-                                    modifier = Modifier.animateItemPlacement()
+                                    onDeleteClick = {
+                                        viewModel.onEvent(GoalsEvent.DeleteGoal(goal.id))
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateItemPlacement(
+                                            animationSpec = tween(
+                                                durationMillis = 300
+                                            )
+                                        )
                                 )
                             }
                         }
@@ -232,29 +211,30 @@ fun GoalsScreen(
                 }
             }
             
-            // 显示目标表单对话框
-            AnimatedVisibility(
-                visible = state.showDialog,
-                enter = fadeIn() + slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = tween(300)
-                ),
-                exit = fadeOut() + slideOutVertically(
-                    targetOffsetY = { it / 2 },
-                    animationSpec = tween(300)
-                )
-            ) {
-                GoalDialog(
-                    goal = state.selectedGoal,
-                    onDismiss = { viewModel.onEvent(GoalsEvent.DismissDialog) },
-                    onSave = { goal ->
-                        if (state.selectedGoal == null) {
-                            viewModel.onEvent(GoalsEvent.AddGoal(goal))
-                        } else {
-                            viewModel.onEvent(GoalsEvent.UpdateGoal(goal))
-                        }
+            // 添加/编辑目标对话框
+            if (state.showDialog) {
+                AnimatedVisibility(
+                    visible = state.showDialog,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut(),
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Black.copy(alpha = 0.5f)
+                    ) {
+                        GoalDialog(
+                            goal = state.selectedGoal,
+                            onDismiss = { viewModel.onEvent(GoalsEvent.DismissDialog) },
+                            onSave = { goal ->
+                                if (state.selectedGoal != null) {
+                                    viewModel.onEvent(GoalsEvent.UpdateGoal(goal))
+                                } else {
+                                    viewModel.onEvent(GoalsEvent.AddGoal(goal))
+                                }
+                            }
+                        )
                     }
-                )
+                }
             }
         }
     }

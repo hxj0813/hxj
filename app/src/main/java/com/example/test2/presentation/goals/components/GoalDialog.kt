@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Task
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -31,6 +32,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -78,10 +80,10 @@ fun GoalDialog(
     // 目标表单状态
     var title by remember { mutableStateOf(goal?.title ?: "") }
     var description by remember { mutableStateOf(goal?.description ?: "") }
-    var isLongTerm by remember { mutableStateOf(goal?.isLongTerm ?: false) }
     var isImportant by remember { mutableStateOf(goal?.isImportant ?: false) }
-    var progress by remember { mutableStateOf(goal?.progress ?: 0f) }
+    val progress = remember { goal?.progress ?: 0f } // 改为不可变的值
     var deadline by remember { mutableStateOf(goal?.deadline ?: Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) } // 默认一周后
+    var hasLinkedTask by remember { mutableStateOf(goal?.hasLinkedTask ?: true) } // 新增关联任务状态，默认选中
     
     // 表单验证
     val isTitleValid = title.isNotBlank()
@@ -209,26 +211,6 @@ fun GoalDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 目标类型选择
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "长期目标",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    
-                    Spacer(modifier = Modifier.weight(1f))
-                    
-                    Switch(
-                        checked = isLongTerm,
-                        onCheckedChange = { isLongTerm = it }
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
                 // 重要性标记
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -253,7 +235,36 @@ fun GoalDialog(
                     }
                 }
                 
-                // 如果是编辑模式，显示进度滑块
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 关联任务选项
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Task,
+                        contentDescription = "关联任务",
+                        tint = PrimaryLight,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .padding(end = 8.dp)
+                    )
+                    
+                    Text(
+                        text = "关联任务",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    Switch(
+                        checked = hasLinkedTask,
+                        onCheckedChange = { hasLinkedTask = it }
+                    )
+                }
+                
+                // 如果是编辑模式，显示进度条（只读）
                 AnimatedVisibility(
                     visible = goal != null,
                     enter = fadeIn() + expandVertically(),
@@ -264,17 +275,36 @@ fun GoalDialog(
                             .fillMaxWidth()
                             .padding(top = 16.dp)
                     ) {
-                        Text(
-                            text = "完成进度: ${(progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "完成进度",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Text(
+                                text = "${(progress * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        }
                         
-                        Slider(
-                            value = progress,
-                            onValueChange = { progress = it },
-                            valueRange = 0f..1f,
-                            steps = 20,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // 使用LinearProgressIndicator替代可编辑的Slider
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         )
                     }
                 }
@@ -299,11 +329,12 @@ fun GoalDialog(
                                     id = goal?.id ?: 0,
                                     title = title,
                                     description = description,
-                                    isLongTerm = isLongTerm,
+                                    isLongTerm = goal?.isLongTerm ?: false,
                                     isImportant = isImportant,
                                     progress = progress,
                                     deadline = deadline,
                                     isCompleted = goal?.isCompleted ?: false,
+                                    hasLinkedTask = hasLinkedTask,
                                     createdAt = goal?.createdAt ?: Date(),
                                     updatedAt = Date()
                                 )
