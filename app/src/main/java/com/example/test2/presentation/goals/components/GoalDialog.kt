@@ -63,6 +63,8 @@ import com.example.test2.presentation.theme.PrimaryLight
 import com.example.test2.util.DateTimeUtil
 import java.util.Date
 
+
+
 /**
  * 目标添加/编辑对话框
  *
@@ -83,7 +85,7 @@ fun GoalDialog(
     var isImportant by remember { mutableStateOf(goal?.isImportant ?: false) }
     val progress = remember { goal?.progress ?: 0f } // 改为不可变的值
     var deadline by remember { mutableStateOf(goal?.deadline ?: Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) } // 默认一周后
-    var hasLinkedTask by remember { mutableStateOf(goal?.hasLinkedTask ?: true) } // 新增关联任务状态，默认选中
+    //var hasLinkedTask by remember { mutableStateOf(goal?.hasLinkedTask ?: true) } // 新增关联任务状态，默认选中
     
     // 表单验证
     val isTitleValid = title.isNotBlank()
@@ -258,10 +260,10 @@ fun GoalDialog(
                     
                     Spacer(modifier = Modifier.weight(1f))
                     
-                    Switch(
-                        checked = hasLinkedTask,
-                        onCheckedChange = { hasLinkedTask = it }
-                    )
+                    //                    Switch(
+                    //                        checked = hasLinkedTask,
+                    //                        onCheckedChange = { hasLinkedTask = it }
+                    //                    )
                 }
                 
                 // 如果是编辑模式，显示进度条（只读）
@@ -334,7 +336,7 @@ fun GoalDialog(
                                     progress = progress,
                                     deadline = deadline,
                                     isCompleted = goal?.isCompleted ?: false,
-                                    hasLinkedTask = hasLinkedTask,
+                                    //hasLinkedTask = hasLinkedTask,
                                     createdAt = goal?.createdAt ?: Date(),
                                     updatedAt = Date()
                                 )

@@ -2,6 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+
+
 }
 
 android {
@@ -57,7 +61,15 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation(platform("androidx.compose:compose-bom:2024.04.01")) // 使用最新 BOM 版本
+    implementation(platform("androidx.compose:compose-bom:2024.04.01"))
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.8.9")
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler) // 使用ksp处理Room注解
+    //Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler) // 使用ksp来处理Hilt注解
+    implementation(libs.hilt.navigation.compose)
 }

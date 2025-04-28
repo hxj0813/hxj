@@ -15,6 +15,7 @@ import java.util.Date
 /**
  * 目标管理ViewModel
  */
+
 class GoalsViewModel : ViewModel() {
 
     // 状态
