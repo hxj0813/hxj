@@ -4,8 +4,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    
 
 
+}
+
+// 解决依赖冲突
+configurations.all {
+    resolutionStrategy {
+        force("com.squareup:javapoet:1.13.0")
+        force("com.squareup:kotlinpoet:1.14.2")
+        force("com.squareup:kotlinpoet-javapoet:1.14.2")
+    }
 }
 
 android {

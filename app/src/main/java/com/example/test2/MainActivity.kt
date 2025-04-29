@@ -26,7 +26,9 @@ import com.example.test2.presentation.habits.NotesScreen
 import com.example.test2.presentation.tasks.TasksScreen
 import com.example.test2.presentation.timetracking.TimeTrackingScreen
 import com.example.test2.ui.theme.Test2Theme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

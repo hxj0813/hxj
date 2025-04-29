@@ -51,7 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test2.data.model.Goal
 import com.example.test2.presentation.goals.components.GoalCard
 import com.example.test2.presentation.goals.components.GoalDialog
@@ -63,7 +63,7 @@ import com.example.test2.presentation.theme.PrimaryLight
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GoalsScreen(
-    viewModel: GoalsViewModel = viewModel()
+    viewModel: GoalsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val lazyListState = rememberLazyListState()
