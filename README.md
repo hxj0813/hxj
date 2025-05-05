@@ -27,7 +27,7 @@
 - **导航**：Compose Navigation
 - **数据持久化**：Room数据库 
 - **异步处理**：Kotlin协程
-- **依赖注入**：Hilt (预设)
+- **依赖注入**：Hilt
 
 ## 应用截图
 

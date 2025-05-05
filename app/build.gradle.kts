@@ -82,4 +82,6 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler) // 使用ksp来处理Hilt注解
     implementation(libs.hilt.navigation.compose)
+
+    implementation("com.google.code.gson:gson:2.10.1")
 }

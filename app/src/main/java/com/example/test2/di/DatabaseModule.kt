@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.test2.data.local.AppDatabase
 import com.example.test2.data.local.dao.GoalDao
+import com.example.test2.data.local.dao.NoteDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,6 +36,15 @@ object DatabaseModule {
     @Singleton
     fun provideGoalDao(database: AppDatabase): GoalDao {
         return database.goalDao()
+    }
+    
+    /**
+     * 提供NoteDao实例
+     */
+    @Provides
+    @Singleton
+    fun provideNoteDao(database: AppDatabase): NoteDao {
+        return database.noteDao()
     }
     
     // 随着应用扩展，可以在此添加更多DAO的Provider方法

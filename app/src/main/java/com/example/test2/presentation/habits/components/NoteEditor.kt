@@ -60,7 +60,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.HabitNote
-import com.example.test2.data.model.NoteImage
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteMood
 import java.time.LocalDateTime
@@ -94,13 +93,6 @@ fun NoteEditor(
         mutableStateListOf<NoteTag>().apply {
             if (existingNote?.tags != null) {
                 addAll(existingNote.tags)
-            }
-        }
-    }
-    val selectedImages = remember { 
-        mutableStateListOf<NoteImage>().apply {
-            if (existingNote?.images != null) {
-                addAll(existingNote.images)
             }
         }
     }
@@ -199,24 +191,6 @@ fun NoteEditor(
                 }
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // 图片选择器
-            ImageSelector(
-                images = selectedImages.toList(),
-                onAddImage = {
-                    // 模拟添加图片 - 在实际应用中会启动图片选择器
-                    val newImage = NoteImage(
-                        id = UUID.randomUUID().toString(),
-                        uri = "sample_uri_${selectedImages.size}",
-                        description = "示例图片 ${selectedImages.size + 1}",
-                        createdAt = LocalDateTime.now().toDate()
-                    )
-                    selectedImages.add(newImage)
-                },
-                onRemoveImage = { selectedImages.remove(it) }
-            )
-            
             Spacer(modifier = Modifier.height(32.dp))
             
             // 保存按钮
@@ -228,7 +202,7 @@ fun NoteEditor(
                             content = content,
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            images = selectedImages.toList(),
+                            images = emptyList(), // 不包含图片
                             updatedAt = LocalDateTime.now().toDate()
                         )
                     } else {
@@ -239,7 +213,7 @@ fun NoteEditor(
                             content = content,
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            images = selectedImages.toList(),
+                            images = emptyList(), // 不包含图片
                             createdAt = LocalDateTime.now().toDate(),
                             updatedAt = LocalDateTime.now().toDate()
                         )

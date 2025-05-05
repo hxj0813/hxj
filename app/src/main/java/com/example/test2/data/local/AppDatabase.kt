@@ -1,4 +1,4 @@
- package com.example.test2.data.local
+package com.example.test2.data.local
 
 import android.content.Context
 import androidx.room.Database
@@ -7,8 +7,10 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.test2.data.local.converter.DateConverter
 import com.example.test2.data.local.dao.GoalDao
+import com.example.test2.data.local.dao.NoteDao
 //import com.example.test2.data.local.dao.TaskDao
 import com.example.test2.data.local.entity.GoalEntity
+import com.example.test2.data.local.entity.NoteEntity
 //import com.example.test2.data.local.entity.TaskEntity
 
 /**
@@ -18,6 +20,7 @@ import com.example.test2.data.local.entity.GoalEntity
 @Database(
     entities = [
         GoalEntity::class,
+        NoteEntity::class,
         //TaskEntity::class
         // 随着应用扩展，可以在这里添加更多实体
     ],
@@ -30,6 +33,11 @@ abstract class AppDatabase : RoomDatabase() {
      * 获取目标DAO
      */
     abstract fun goalDao(): GoalDao
+    
+    /**
+     * 获取笔记DAO
+     */
+    abstract fun noteDao(): NoteDao
     
     /**
      * 获取任务DAO
