@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.test2.data.model.TaskType
 import com.example.test2.presentation.tasks.components.TaskCalendarView
 import com.example.test2.presentation.tasks.components.TaskCard
 import com.example.test2.presentation.tasks.components.TaskDialog
@@ -264,15 +265,18 @@ fun TasksScreen(
                                     onEditClick = {
                                         viewModel.onEvent(TasksEvent.ShowEditTaskDialog(task))
                                     },
-                                    onDeleteClick = {
+                                    onDelete = {
                                         viewModel.onEvent(TasksEvent.DeleteTask(task.id))
                                     },
-                                    onToggleCompletion = { isCompleted ->
-                                        viewModel.onEvent(TasksEvent.CompleteTask(task.id, isCompleted))
+                                    onToggleCompletion = {
+                                        viewModel.onEvent(TasksEvent.CompleteTask(task.id))
                                     },
-                                    onDragStateChanged = { isDragging ->
-                                        viewModel.onEvent(TasksEvent.DragStateChanged(isDragging))
-                                    },
+                                    onCheckinClick = if (task.type == TaskType.CHECK_IN) {
+                                        { viewModel.onEvent(TasksEvent.CheckinTask(task.id)) }
+                                    } else null,
+                                    onStartClick = if (task.type == TaskType.POMODORO) {
+                                        { viewModel.onEvent(TasksEvent.StartPomodoroTask(task.id)) }
+                                    } else null,
                                     modifier = Modifier.animateItemPlacement(
                                         animationSpec = tween(300)
                                     )
@@ -298,6 +302,7 @@ fun TasksScreen(
                 TaskDialog(
                     task = state.selectedTask,
                     goals = state.goals,
+                    habits = state.habits,
                     onDismiss = { viewModel.onEvent(TasksEvent.DismissDialog) },
                     onSave = { task ->
                         if (state.selectedTask == null) {

@@ -21,7 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.test2.presentation.common.components.BottomNavigationBar
 import com.example.test2.presentation.common.navigation.BottomNavItem
 import com.example.test2.presentation.goals.GoalsScreen
-import com.example.test2.presentation.habits.HabitScreen
+import com.example.test2.presentation.habits.HabitsScreen
 import com.example.test2.presentation.habits.NotesScreen
 import com.example.test2.presentation.tasks.TasksScreen
 import com.example.test2.presentation.timetracking.TimeTrackingScreen
@@ -78,14 +78,7 @@ fun MainApp() {
         ) {
             // 习惯模块
             composable(BottomNavItem.HABITS.route) {
-                HabitScreen(
-                    onNavigateToNotes = {
-                        navController.navigate("notes")
-                    },
-                    onNavigateToHabitNotes = { habitId ->
-                        navController.navigate("notes/$habitId")
-                    }
-                )
+                HabitsScreen()
             }
             
             // 任务模块

@@ -38,9 +38,19 @@ sealed class TasksEvent {
     data class DeleteTask(val taskId: Long) : TasksEvent()
     
     /**
-     * 标记任务完成状态
+     * 切换任务完成状态
      */
-    data class CompleteTask(val taskId: Long, val isCompleted: Boolean) : TasksEvent()
+    data class CompleteTask(val taskId: Long) : TasksEvent()
+    
+    /**
+     * 开始番茄钟任务
+     */
+    data class StartPomodoroTask(val taskId: Long) : TasksEvent()
+    
+    /**
+     * 进行打卡任务
+     */
+    data class CheckinTask(val taskId: Long) : TasksEvent()
     
     /**
      * 显示添加任务对话框
@@ -66,4 +76,9 @@ sealed class TasksEvent {
      * 加载目标列表（用于任务关联）
      */
     object LoadGoals : TasksEvent()
+    
+    /**
+     * 加载习惯列表（用于任务关联）
+     */
+    object LoadHabits : TasksEvent()
 } 

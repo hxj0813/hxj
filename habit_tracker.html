@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>习惯养成追踪器</title>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --primary-color-light: #6BA5E7;
+            --primary-color-dark: #3A7BC8;
+            --accent-color-green: #4CAF50;
+            --accent-color-purple: #9C27B0;
+            --accent-color-orange: #FF9800;
+            --danger-color: #FF5252;
+            --success-color: #66BB6A;
+            --background-color: #F8F9FA;
+            --surface-color: #FFFFFF;
+            --text-color: #2C3E50;
+            --text-color-light: #7F8C8D;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 16px;
+            --box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            --box-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding-bottom: 80px;
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--surface-color);
+            padding: var(--spacing-md) var(--spacing-lg);
+            box-shadow: var(--box-shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-lg);
+        }
+
+        .nav-links a {
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .user-profile {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: var(--primary-color-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* 主要内容区 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-color);
+        }
+
+        /* 仪表盘摘要部分 */
+        .dashboard-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .summary-card {
+            background-color: var(--surface-color);
+            padding: var(--spacing-lg);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--box-shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .summary-card-title {
+            font-size: 0.9rem;
+            color: var(--text-color-light);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .summary-card-value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .summary-card-change {
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--success-color);
+        }
+
+        .summary-card-change i {
+            margin-right: var(--spacing-xs);
+        }
+
+        /* 习惯卡片 */
+        .habits-container {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+
+        .habit-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .habit-card {
+            background-color: var(--surface-color);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .habit-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .habit-card-header {
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .habit-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 12px;
+            background-color: rgba(74, 144, 226, 0.1);
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .habit-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .habit-subtitle {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-color-light);
+            font-size: 0.85rem;
+        }
+
+        .habit-card-body {
+            padding: var(--spacing-md) var(--spacing-lg);
+        }
+
+        .habit-progress {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .habit-progress-title {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .habit-progress-bar {
+            height: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .habit-progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary-color-light), var(--primary-color));
+            border-radius: 4px;
+        }
+
+        .habit-milestones {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 var(--spacing-xs);
+            margin-top: var(--spacing-xs);
+        }
+
+        .milestone {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.7rem;
+            color: var(--text-color-light);
+            position: relative;
+        }
+
+        .milestone::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--text-color-light);
+            opacity: 0.3;
+        }
+
+        .milestone.reached::before {
+            background-color: var(--primary-color);
+            opacity: 1;
+        }
+
+        .habit-streak {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(to right, #FFD54F, #FFA726);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .habit-streak i {
+            margin-right: 4px;
+        }
+
+        .habit-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin: var(--spacing-sm) 0;
+        }
+
+        .habit-day {
+            aspect-ratio: 1/1;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--text-color-light);
+            position: relative;
+        }
+
+        .habit-day.completed {
+            background-color: var(--accent-color-green);
+            color: white;
+        }
+
+        .habit-day.missed {
+            background-color: rgba(255, 127, 127, 0.3);
+        }
+
+        .habit-day.today {
+            border: 2px solid var(--primary-color-light);
+        }
+
+        .habit-card-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .check-in-btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 6px 12px;
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .check-in-btn:hover {
+            background-color: var(--primary-color-dark);
+        }
+
+        .check-in-btn.checked {
+            background-color: var(--success-color);
+        }
+
+        .more-btn {
+            color: var(--text-color-light);
+            opacity: 0.7;
+        }
+
+        .more-btn:hover {
+            opacity: 1;
+        }
+
+        /* 底部添加按钮 */
+        .add-habit-btn {
+            position: fixed;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: var(--transition);
+        }
+
+        .add-habit-btn:hover {
+            background-color: var(--primary-color-dark);
+            transform: scale(1.05);
+        }
+
+        /* 徽章部分 */
+        .badges-container {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .badges-list {
+            display: flex;
+            gap: var(--spacing-md);
+            overflow-x: auto;
+            padding-bottom: var(--spacing-md);
+        }
+
+        .badge-card {
+            min-width: 100px;
+            width: 100px;
+            height: 140px;
+            background-color: var(--surface-color);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--box-shadow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--spacing-md);
+            transition: var(--transition);
+        }
+
+        .badge-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--box-shadow-lg);
+        }
+
+        .badge-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(74, 144, 226, 0.2), rgba(74, 144, 226, 0.5));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .badge-locked {
+            opacity: 0.5;
+        }
+
+        .badge-locked .badge-icon {
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2));
+            color: var(--text-color-light);
+        }
+
+        .badge-title {
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .badge-description {
+            font-size: 0.7rem;
+            color: var(--text-color-light);
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: var(--spacing-md);
+            }
+
+            .container {
+                padding: var(--spacing-md);
+            }
+
+            .dashboard-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .habit-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+        <div class="logo">习惯养成</div>
+        <div class="nav-links">
+            <a href="#">仪表盘</a>
+            <a href="#">习惯</a>
+            <a href="#">反思笔记</a>
+            <a href="#">统计</a>
+        </div>
+        <div class="user-profile">JL</div>
+    </nav>
+
+    <div class="container">
+        <h1 class="page-title">我的习惯养成</h1>
+
+        <!-- 仪表盘摘要 -->
+        <div class="dashboard-summary">
+            <div class="summary-card">
+                <div class="summary-card-title">当前活跃习惯</div>
+                <div class="summary-card-value">6</div>
+                <div class="summary-card-change">
+                    <i>↑</i> 较上月增加2个
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-title">本周完成率</div>
+                <div class="summary-card-value">87%</div>
+                <div class="summary-card-change">
+                    <i>↑</i> 较上周提高5%
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-title">最长连续天数</div>
+                <div class="summary-card-value">28天</div>
+                <div class="summary-card-change">
+                    冥想习惯
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-card-title">已获得徽章</div>
+                <div class="summary-card-value">8/20</div>
+                <div class="summary-card-change">
+                    <i>↑</i> 本月获得2个新徽章
+                </div>
+            </div>
+        </div>
+
+        <!-- 徽章部分 -->
+        <div class="badges-container">
+            <div class="section-header">
+                <h2 class="section-title">成就徽章</h2>
+                <a href="#">查看全部</a>
+            </div>
+            <div class="badges-list">
+                <div class="badge-card">
+                    <div class="badge-icon">🏆</div>
+                    <div class="badge-title">入门达人</div>
+                    <div class="badge-description">成功添加第一个习惯</div>
+                </div>
+                <div class="badge-card">
+                    <div class="badge-icon">🔥</div>
+                    <div class="badge-title">坚持不懈</div>
+                    <div class="badge-description">连续完成习惯7天</div>
+                </div>
+                <div class="badge-card">
+                    <div class="badge-icon">⭐</div>
+                    <div class="badge-title">专注投入</div>
+                    <div class="badge-description">连续完成习惯30天</div>
+                </div>
+                <div class="badge-card badge-locked">
+                    <div class="badge-icon">🌟</div>
+                    <div class="badge-title">习惯大师</div>
+                    <div class="badge-description">连续完成习惯100天</div>
+                </div>
+                <div class="badge-card">
+                    <div class="badge-icon">🌅</div>
+                    <div class="badge-title">早起者</div>
+                    <div class="badge-description">在早上6-9点完成习惯</div>
+                </div>
+                <div class="badge-card badge-locked">
+                    <div class="badge-icon">🌙</div>
+                    <div class="badge-title">夜猫子</div>
+                    <div class="badge-description">在晚上9点-午夜完成习惯</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 习惯列表 -->
+        <div class="habits-container">
+            <div class="section-header">
+                <h2 class="section-title">进行中的习惯</h2>
+                <a href="#">管理习惯</a>
+            </div>
+            <div class="habit-cards">
+                <!-- 习惯1 -->
+                <div class="habit-card">
+                    <div class="habit-card-header">
+                        <div class="habit-tag">每日</div>
+                        <h3 class="habit-title">早起6:30</h3>
+                        <div class="habit-subtitle">
+                            <span>开始于 2023-09-01</span>
+                            <span>目标: 30天</span>
+                        </div>
+                    </div>
+                    <div class="habit-card-body">
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>进度</span>
+                                <span>24/30 天</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-fill" style="width: 80%;"></div>
+                            </div>
+                            <div class="habit-milestones">
+                                <div class="milestone reached" title="7天"></div>
+                                <div class="milestone reached" title="14天"></div>
+                                <div class="milestone reached" title="21天"></div>
+                                <div class="milestone" title="30天"></div>
+                            </div>
+                        </div>
+                        <div class="habit-streak">
+                            <i>🔥</i> 当前连续 24 天
+                        </div>
+                    </div>
+                    <div class="habit-card-footer">
+                        <button class="check-in-btn checked">今日已打卡</button>
+                        <button class="more-btn">⋮</button>
+                    </div>
+                </div>
+
+                <!-- 习惯2 -->
+                <div class="habit-card">
+                    <div class="habit-card-header">
+                        <div class="habit-tag">每日</div>
+                        <h3 class="habit-title">阅读30分钟</h3>
+                        <div class="habit-subtitle">
+                            <span>开始于 2023-08-15</span>
+                            <span>目标: 21天</span>
+                        </div>
+                    </div>
+                    <div class="habit-card-body">
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>进度</span>
+                                <span>18/21 天</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-fill" style="width: 85%;"></div>
+                            </div>
+                            <div class="habit-milestones">
+                                <div class="milestone reached" title="7天"></div>
+                                <div class="milestone reached" title="14天"></div>
+                                <div class="milestone" title="21天"></div>
+                            </div>
+                        </div>
+                        <div class="habit-calendar">
+                            <div class="habit-day completed">1</div>
+                            <div class="habit-day completed">2</div>
+                            <div class="habit-day completed">3</div>
+                            <div class="habit-day missed">4</div>
+                            <div class="habit-day completed">5</div>
+                            <div class="habit-day completed">6</div>
+                            <div class="habit-day completed">7</div>
+                            <div class="habit-day completed">8</div>
+                            <div class="habit-day completed">9</div>
+                            <div class="habit-day completed">10</div>
+                            <div class="habit-day completed">11</div>
+                            <div class="habit-day missed">12</div>
+                            <div class="habit-day completed">13</div>
+                            <div class="habit-day completed today">今</div>
+                        </div>
+                    </div>
+                    <div class="habit-card-footer">
+                        <button class="check-in-btn">立即打卡</button>
+                        <button class="more-btn">⋮</button>
+                    </div>
+                </div>
+
+                <!-- 习惯3 -->
+                <div class="habit-card">
+                    <div class="habit-card-header">
+                        <div class="habit-tag">工作日</div>
+                        <h3 class="habit-title">冥想15分钟</h3>
+                        <div class="habit-subtitle">
+                            <span>开始于 2023-07-01</span>
+                            <span>目标: 持续进行</span>
+                        </div>
+                    </div>
+                    <div class="habit-card-body">
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>本月完成率</span>
+                                <span>92%</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-fill" style="width: 92%; background: linear-gradient(to right, #9C27B0, #673AB7);"></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-color-light);">当前连续</div>
+                                <div style="font-size: 1.2rem; font-weight: bold; color: #9C27B0;">28天</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-color-light);">最长连续</div>
+                                <div style="font-size: 1.2rem; font-weight: bold; color: #9C27B0;">28天</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.8rem; color: var(--text-color-light);">总计次数</div>
+                                <div style="font-size: 1.2rem; font-weight: bold; color: #9C27B0;">64次</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="habit-card-footer">
+                        <button class="check-in-btn">立即打卡</button>
+                        <button class="more-btn">⋮</button>
+                    </div>
+                </div>
+
+                <!-- 习惯4 -->
+                <div class="habit-card">
+                    <div class="habit-card-header">
+                        <div class="habit-tag">每周3次</div>
+                        <h3 class="habit-title">锻炼45分钟</h3>
+                        <div class="habit-subtitle">
+                            <span>开始于 2023-08-30</span>
+                            <span>目标: 12周</span>
+                        </div>
+                    </div>
+                    <div class="habit-card-body">
+                        <div class="habit-progress">
+                            <div class="habit-progress-title">
+                                <span>进度</span>
+                                <span>2/12 周</span>
+                            </div>
+                            <div class="habit-progress-bar">
+                                <div class="habit-progress-fill" style="width: 16%; background: linear-gradient(to right, #FF9800, #FF5722);"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 0.9rem; margin-bottom: 6px;">本周进度</div>
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: #FF9800; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;">✓</div>
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: #FF9800; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;">✓</div>
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background-color: rgba(0,0,0,0.1); color: var(--text-color-light); display: flex; justify-content: center; align-items: center;">3</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="habit-card-footer">
+                        <button class="check-in-btn">今日打卡</button>
+                        <button class="more-btn">⋮</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加习惯按钮 -->
+    <button class="add-habit-btn">+</button>
+
+    <script>
+        // 简单的交互逻辑示例
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为未打卡的习惯按钮添加点击事件
+            const checkInButtons = document.querySelectorAll('.check-in-btn:not(.checked)');
+            checkInButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    this.textContent = '今日已打卡';
+                    this.classList.add('checked');
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

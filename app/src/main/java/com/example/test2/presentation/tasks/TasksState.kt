@@ -18,6 +18,7 @@ import java.util.Date
  * @property showDialog 是否显示对话框
  * @property selectedTask 当前选中的任务
  * @property goals 可关联的目标列表
+ * @property habits 习惯列表
  */
 data class TasksState(
     val tasks: List<Task> = emptyList(),
@@ -29,6 +30,7 @@ data class TasksState(
     val showDialog: Boolean = false,
     val selectedTask: Task? = null,
     val goals: List<Goal> = emptyList(),
+    val habits: List<Any> = emptyList(), // 暂时使用Any类型，后续可替换为实际的Habit类型
     // 任务拖拽相关状态
     val isDragging: Boolean = false
 ) {

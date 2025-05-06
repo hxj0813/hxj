@@ -6,6 +6,10 @@ import com.example.test2.data.model.Goal
 import com.example.test2.data.model.Task
 import com.example.test2.data.model.TaskPriority
 import com.example.test2.data.model.TaskStatus
+import com.example.test2.data.model.TaskType
+import com.example.test2.data.model.CheckInFrequencyType
+import com.example.test2.data.model.CheckInSettings
+import com.example.test2.data.model.PomodoroSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,10 +35,14 @@ class TasksViewModel : ViewModel() {
     
     // 模拟目标数据
     private val dummyGoals = generateDummyGoals()
+    
+    // 模拟习惯数据
+    private val dummyHabits = generateDummyHabits()
 
     init {
         loadTasks()
         loadGoals()
+        loadHabits()
     }
 
     /**
@@ -44,12 +52,15 @@ class TasksViewModel : ViewModel() {
         when (event) {
             is TasksEvent.LoadTasks -> loadTasks()
             is TasksEvent.LoadGoals -> loadGoals()
+            is TasksEvent.LoadHabits -> loadHabits()
             is TasksEvent.SelectDate -> selectDate(event.date)
             is TasksEvent.FilterTasks -> filterTasks(event.filter)
             is TasksEvent.AddTask -> addTask(event.task)
             is TasksEvent.UpdateTask -> updateTask(event.task)
             is TasksEvent.DeleteTask -> deleteTask(event.taskId)
-            is TasksEvent.CompleteTask -> completeTask(event.taskId, event.isCompleted)
+            is TasksEvent.CompleteTask -> completeTask(event.taskId)
+            is TasksEvent.StartPomodoroTask -> startPomodoroTask(event.taskId)
+            is TasksEvent.CheckinTask -> checkinTask(event.taskId)
             is TasksEvent.ShowAddTaskDialog -> showAddTaskDialog()
             is TasksEvent.ShowEditTaskDialog -> showEditTaskDialog(event.task)
             is TasksEvent.DismissDialog -> dismissDialog()
@@ -87,6 +98,18 @@ class TasksViewModel : ViewModel() {
             kotlinx.coroutines.delay(300)
             
             _state.update { it.copy(goals = dummyGoals) }
+        }
+    }
+
+    /**
+     * 加载习惯列表
+     */
+    private fun loadHabits() {
+        viewModelScope.launch {
+            // 模拟网络延迟
+            kotlinx.coroutines.delay(300)
+            
+            _state.update { it.copy(habits = dummyHabits) }
         }
     }
 
@@ -216,7 +239,7 @@ class TasksViewModel : ViewModel() {
     /**
      * 切换任务完成状态
      */
-    private fun completeTask(taskId: Long, isCompleted: Boolean) {
+    private fun completeTask(taskId: Long) {
         viewModelScope.launch {
             // 模拟网络延迟
             kotlinx.coroutines.delay(300)
@@ -224,11 +247,129 @@ class TasksViewModel : ViewModel() {
             val updatedTasks = _state.value.tasks.map { 
                 if (it.id == taskId) {
                     it.copy(
-                        isCompleted = isCompleted,
+                        isCompleted = !it.isCompleted,
                         updatedAt = Date()
                     )
                 } else {
                     it
+                }
+            }
+            
+            _state.update { 
+                it.copy(
+                    tasks = updatedTasks,
+                    filteredTasks = filterTasksByCurrentCriteria(updatedTasks)
+                )
+            }
+        }
+    }
+
+    /**
+     * 开始番茄钟任务
+     */
+    private fun startPomodoroTask(taskId: Long) {
+        viewModelScope.launch {
+            // 这里可以实现番茄钟任务的开始逻辑
+            // 例如打开番茄钟计时界面、更新任务完成次数等
+            
+            // 暂时只是打印日志
+            println("开始番茄钟任务: $taskId")
+            
+            // 实际应用中可以导航到番茄钟界面，或者启动服务等
+        }
+    }
+    
+    /**
+     * 进行打卡任务
+     */
+    private fun checkinTask(taskId: Long) {
+        viewModelScope.launch {
+            // 模拟网络延迟
+            kotlinx.coroutines.delay(300)
+            
+            val updatedTasks = _state.value.tasks.map { task -> 
+                if (task.id == taskId && task.type == TaskType.CHECK_IN && task.checkInSettings != null) {
+                    // 更新打卡任务的状态
+                    val currentDate = Date()
+                    val checkInSettings = task.checkInSettings
+                    
+                    // 检查是否是同一天的打卡
+                    val isSameDay = checkInSettings.lastCheckInDate?.let {
+                        val lastCal = Calendar.getInstance().apply { time = it }
+                        val currentCal = Calendar.getInstance().apply { time = currentDate }
+                        
+                        lastCal.get(Calendar.YEAR) == currentCal.get(Calendar.YEAR) &&
+                        lastCal.get(Calendar.DAY_OF_YEAR) == currentCal.get(Calendar.DAY_OF_YEAR)
+                    } ?: false
+                    
+                    // 计算新的连续打卡天数
+                    val isNewDay = !isSameDay
+                    val currentStreak = if (isNewDay) {
+                        // 检查是否是连续的
+                        val lastCal = Calendar.getInstance().apply {
+                            time = checkInSettings.lastCheckInDate ?: currentDate
+                        }
+                        val currentCal = Calendar.getInstance().apply { time = currentDate }
+                        
+                        val dayDiff = (currentCal.timeInMillis - lastCal.timeInMillis) / (24 * 60 * 60 * 1000)
+                        
+                        if (dayDiff <= 1) {
+                            // 连续打卡，增加连续天数
+                            checkInSettings.currentStreak + 1
+                        } else {
+                            // 中断了连续打卡，重置为1
+                            1
+                        }
+                    } else {
+                        // 同一天，保持不变
+                        checkInSettings.currentStreak
+                    }
+                    
+                    // 计算最佳连续打卡天数
+                    val bestStreak = Math.max(currentStreak, checkInSettings.bestStreak)
+                    
+                    // 更新今日完成次数或本周完成天数
+                    val completedToday = if (checkInSettings.frequencyType == CheckInFrequencyType.DAILY) {
+                        if (isSameDay) checkInSettings.completedToday + 1 else 1
+                    } else {
+                        checkInSettings.completedToday
+                    }
+                    
+                    // 检查是否是同一周
+                    val isSameWeek = checkInSettings.lastCheckInDate?.let {
+                        val lastCal = Calendar.getInstance().apply { time = it }
+                        val currentCal = Calendar.getInstance().apply { time = currentDate }
+                        
+                        lastCal.get(Calendar.YEAR) == currentCal.get(Calendar.YEAR) &&
+                        lastCal.get(Calendar.WEEK_OF_YEAR) == currentCal.get(Calendar.WEEK_OF_YEAR)
+                    } ?: false
+                    
+                    val completedThisWeek = if (checkInSettings.frequencyType == CheckInFrequencyType.WEEKLY) {
+                        if (isSameWeek) {
+                            if (isNewDay) checkInSettings.completedThisWeek + 1 else checkInSettings.completedThisWeek
+                        } else {
+                            1
+                        }
+                    } else {
+                        checkInSettings.completedThisWeek
+                    }
+                    
+                    // 创建更新后的设置
+                    val updatedSettings = checkInSettings.copy(
+                        currentStreak = currentStreak,
+                        bestStreak = bestStreak,
+                        completedToday = completedToday,
+                        completedThisWeek = completedThisWeek,
+                        lastCheckInDate = currentDate
+                    )
+                    
+                    // 返回更新后的任务
+                    task.copy(
+                        checkInSettings = updatedSettings,
+                        updatedAt = currentDate
+                    )
+                } else {
+                    task
                 }
             }
             
@@ -464,6 +605,50 @@ class TasksViewModel : ViewModel() {
                 isImportant = false,
                 progress = 0.4f,
                 deadline = Date(System.currentTimeMillis() + 5 * 24 * 60 * 60 * 1000)
+            )
+        )
+    }
+
+    /**
+     * 生成模拟习惯数据
+     */
+    private fun generateDummyHabits(): List<Any> {
+        // 这里使用Map来模拟习惯数据，实际应用中应该使用Habit类
+        return listOf(
+            mapOf(
+                "id" to "habit1",
+                "title" to "每日阅读30分钟",
+                "description" to "培养阅读习惯，每天阅读至少30分钟",
+                "frequency" to "每天",
+                "createdAt" to Date()
+            ),
+            mapOf(
+                "id" to "habit2",
+                "title" to "早起锻炼",
+                "description" to "每天早晨6点起床进行30分钟锻炼",
+                "frequency" to "每天",
+                "createdAt" to Date()
+            ),
+            mapOf(
+                "id" to "habit3",
+                "title" to "学习新技能",
+                "description" to "每周至少学习一项新技能或知识",
+                "frequency" to "每周3次",
+                "createdAt" to Date()
+            ),
+            mapOf(
+                "id" to "habit4",
+                "title" to "冥想放松",
+                "description" to "每天晚上睡前进行10分钟冥想",
+                "frequency" to "每天",
+                "createdAt" to Date()
+            ),
+            mapOf(
+                "id" to "habit5",
+                "title" to "摄入足够水分",
+                "description" to "每天至少喝8杯水",
+                "frequency" to "每天",
+                "createdAt" to Date()
             )
         )
     }

@@ -6,11 +6,19 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.test2.data.local.converter.DateConverter
+import com.example.test2.data.local.dao.BadgeDao
 import com.example.test2.data.local.dao.GoalDao
+import com.example.test2.data.local.dao.HabitDao
+import com.example.test2.data.local.dao.HabitLogDao
 import com.example.test2.data.local.dao.NoteDao
+import com.example.test2.data.local.dao.UserBadgeDao
 //import com.example.test2.data.local.dao.TaskDao
+import com.example.test2.data.local.entity.BadgeEntity
 import com.example.test2.data.local.entity.GoalEntity
+import com.example.test2.data.local.entity.HabitEntity
+import com.example.test2.data.local.entity.HabitLogEntity
 import com.example.test2.data.local.entity.NoteEntity
+import com.example.test2.data.local.entity.UserBadgeEntity
 //import com.example.test2.data.local.entity.TaskEntity
 
 /**
@@ -21,10 +29,14 @@ import com.example.test2.data.local.entity.NoteEntity
     entities = [
         GoalEntity::class,
         NoteEntity::class,
+        HabitEntity::class,
+        HabitLogEntity::class,
+        BadgeEntity::class,
+        UserBadgeEntity::class
         //TaskEntity::class
         // 随着应用扩展，可以在这里添加更多实体
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)
@@ -38,6 +50,26 @@ abstract class AppDatabase : RoomDatabase() {
      * 获取笔记DAO
      */
     abstract fun noteDao(): NoteDao
+    
+    /**
+     * 获取习惯DAO
+     */
+    abstract fun habitDao(): HabitDao
+    
+    /**
+     * 获取习惯打卡记录DAO
+     */
+    abstract fun habitLogDao(): HabitLogDao
+    
+    /**
+     * 获取徽章DAO
+     */
+    abstract fun badgeDao(): BadgeDao
+    
+    /**
+     * 获取用户徽章DAO
+     */
+    abstract fun userBadgeDao(): UserBadgeDao
     
     /**
      * 获取任务DAO

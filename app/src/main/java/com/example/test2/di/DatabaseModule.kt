@@ -3,8 +3,12 @@ package com.example.test2.di
 import android.content.Context
 import androidx.room.Room
 import com.example.test2.data.local.AppDatabase
+import com.example.test2.data.local.dao.BadgeDao
 import com.example.test2.data.local.dao.GoalDao
+import com.example.test2.data.local.dao.HabitDao
+import com.example.test2.data.local.dao.HabitLogDao
 import com.example.test2.data.local.dao.NoteDao
+import com.example.test2.data.local.dao.UserBadgeDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,8 +17,8 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * 数据库依赖注入模块
- * 提供数据库和DAO的实例
+ * 数据库模块
+ * 提供应用中需要的数据库相关依赖
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -45,6 +49,42 @@ object DatabaseModule {
     @Singleton
     fun provideNoteDao(database: AppDatabase): NoteDao {
         return database.noteDao()
+    }
+    
+    /**
+     * 提供HabitDao实例
+     */
+    @Provides
+    @Singleton
+    fun provideHabitDao(database: AppDatabase): HabitDao {
+        return database.habitDao()
+    }
+    
+    /**
+     * 提供HabitLogDao实例
+     */
+    @Provides
+    @Singleton
+    fun provideHabitLogDao(database: AppDatabase): HabitLogDao {
+        return database.habitLogDao()
+    }
+    
+    /**
+     * 提供BadgeDao实例
+     */
+    @Provides
+    @Singleton
+    fun provideBadgeDao(database: AppDatabase): BadgeDao {
+        return database.badgeDao()
+    }
+    
+    /**
+     * 提供UserBadgeDao实例
+     */
+    @Provides
+    @Singleton
+    fun provideUserBadgeDao(database: AppDatabase): UserBadgeDao {
+        return database.userBadgeDao()
     }
     
     // 随着应用扩展，可以在此添加更多DAO的Provider方法

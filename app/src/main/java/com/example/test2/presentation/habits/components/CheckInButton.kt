@@ -73,25 +73,22 @@ import kotlin.random.Random
  * 有趣味性的习惯打卡按钮，支持不同状态的动画效果
  *
  * @param isCheckedIn 是否已打卡
- * @param currentStreak 当前连续天数
- * @param habitColor 习惯颜色
  * @param onCheckIn 打卡回调
  * @param onCancelCheckIn 取消打卡回调
+ * @param color 按钮颜色
  * @param modifier Modifier修饰符
  */
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun CheckInButton(
     isCheckedIn: Boolean,
-    currentStreak: Int,
-    habitColor: Color,
     onCheckIn: () -> Unit,
     onCancelCheckIn: () -> Unit,
+    color: Color,
     modifier: Modifier = Modifier
 ) {
     // 状态
     var showCompletionEffect by remember { mutableStateOf(false) }
-    var showStreakAnimation by remember { mutableStateOf(false) }
     
     // 点击动画
     val scale by animateFloatAsState(
@@ -131,51 +128,15 @@ fun CheckInButton(
         if (isCheckedIn) {
             showCompletionEffect = true
             delay(400)
-            showStreakAnimation = true
-            delay(1500)
-            showStreakAnimation = false
+            delay(1000)
             showCompletionEffect = false
         }
     }
     
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
     ) {
-        // 连续打卡天数显示
-        AnimatedVisibility(
-            visible = showStreakAnimation && currentStreak > 1,
-            enter = slideInVertically(initialOffsetY = { -50 }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -50 }) + fadeOut()
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(habitColor.copy(alpha = 0.2f))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = habitColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                
-                Spacer(modifier = Modifier.width(4.dp))
-                
-                Text(
-                    text = "连续 $currentStreak 天",
-                    color = habitColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
         // 主打卡按钮
         Box(
             contentAlignment = Alignment.Center,
@@ -187,8 +148,8 @@ fun CheckInButton(
                         width = 2.dp,
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                habitColor.copy(alpha = 0.7f),
-                                habitColor
+                                color.copy(alpha = 0.7f),
+                                color
                             )
                         )
                     ),
@@ -196,7 +157,7 @@ fun CheckInButton(
                 )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(color = habitColor),
+                    indication = rememberRipple(color = color),
                     onClick = {
                         if (isCheckedIn) {
                             onCancelCheckIn()
@@ -210,7 +171,7 @@ fun CheckInButton(
                     if (!isCheckedIn) {
                         Modifier.drawBehind {
                             drawCircle(
-                                color = habitColor.copy(alpha = glowAlpha * 0.3f),
+                                color = color.copy(alpha = glowAlpha * 0.3f),
                                 radius = size.maxDimension / 1.7f
                             )
                         }
@@ -228,7 +189,7 @@ fun CheckInButton(
                     for (i in 0 until 8) {
                         rotate(degrees = i * 45f) {
                             drawLine(
-                                color = habitColor.copy(alpha = 0.8f),
+                                color = color.copy(alpha = 0.8f),
                                 start = Offset(center.x, center.y - radius * 0.7f),
                                 end = Offset(center.x, center.y - radius * 1.3f),
                                 strokeWidth = 4f,
@@ -248,83 +209,53 @@ fun CheckInButton(
                     fadeOut(animationSpec = tween(200)) + 
                     scaleOut(targetScale = 0.8f, animationSpec = tween(200))
                 },
-                label = "CheckButtonContent"
+                label = "CheckInButtonContentAnimation"
             ) { checked ->
                 if (checked) {
                     // 已打卡状态
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(CircleShape)
-                            .background(habitColor)
+                    Surface(
+                        shape = CircleShape,
+                        color = color,
+                        modifier = Modifier.size(80.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "已打卡",
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "已打卡",
+                                tint = Color.White,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
                     }
                 } else {
                     // 未打卡状态
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(CircleShape)
-                            .background(Color.White)
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(80.dp)
                     ) {
-                        Text(
-                            text = "打卡",
-                            color = habitColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "打卡",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = color
+                                )
+                                
+                                // 显示当前日期
+                                Text(
+                                    text = "${Calendar.getInstance().get(Calendar.DAY_OF_MONTH)}日",
+                                    fontSize = 14.sp,
+                                    color = color.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        // 完成提示文本
-        AnimatedVisibility(
-            visible = showCompletionEffect,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            Text(
-                text = getRandomEncouragement(),
-                color = habitColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-/**
- * 随机获取一条鼓励性文字
- */
-private fun getRandomEncouragement(): String {
-    val messages = listOf(
-        "太棒了！坚持就是胜利！",
-        "很好！今天的努力明天会看到效果！",
-        "成功打卡！继续保持！",
-        "恭喜你，又完成了一天！",
-        "今天的坚持，明天的习惯！",
-        "做得好！一步一个脚印！",
-        "坚持的力量是无穷的！",
-        "每一次打卡都是成长！",
-        "你做到了！为自己点赞！"
-    )
-    
-    // 根据时间段返回不同的消息
-    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    return when {
-        hour < 12 -> "早安！${messages[Random.nextInt(messages.size)]}"
-        hour < 18 -> "奋斗的一天！${messages[Random.nextInt(messages.size)]}"
-        else -> "晚上好！${messages[Random.nextInt(messages.size)]}"
     }
 } 

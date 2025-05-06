@@ -4,85 +4,55 @@ import java.util.Date
 import java.util.UUID
 
 /**
- * 涔犳儻鍏绘垚棰戠巼绫诲瀷
+ * 习惯养成频率类型
  */
 enum class HabitFrequency {
-    DAILY,      // 姣忓ぉ
-    WEEKDAYS,   // 宸ヤ綔鏃?
-    WEEKLY,     // 姣忓懆
-    MONTHLY     // 姣忔湀
+    DAILY,      // 每天
+    WEEKDAYS,   // 工作日
+    WEEKLY,     // 每周
+    MONTHLY     // 每月
 }
 
 /**
- * 涔犳儻绫诲瀷
+ * 习惯类型
  */
 enum class HabitCategory {
-    HEALTH,     // 鍋ュ悍
-    STUDY,      // 瀛︿範
-    WORK,       // 宸ヤ綔
-    SPORTS,     // 杩愬姩
-    READING,    // 闃呰
-    MEDITATION, // 鍐ユ兂
-    OTHER       // 鍏朵粬
+    HEALTH,     // 健康
+    STUDY,      // 学习
+    WORK,       // 工作
+    SPORTS,     // 运动
+    READING,    // 阅读
+    MEDITATION, // 冥想
+    OTHER       // 其他
 }
 
 /**
- * 涔犳儻鎴愬氨寰界珷绫诲瀷
- */
-enum class HabitBadgeType {
-    STARTER,        // 鍒濆鑰咃紙寮€濮嬩竴涓柊涔犳儻锛?
-    PERSISTENT,     // 鍧氭寔鑰咃紙杩炵画7澶╋級
-    DEDICATED,      // 涓撴敞鑰咃紙杩炵画30澶╋級
-    MASTER,         // 澶у笀锛堣繛缁?00澶╋級
-    COMEBACK,       // 鍥炲綊鑰咃紙涓柇鍚庨噸鏂板紑濮嬶級
-    CONSISTENT,     // 绋冲畾鑰咃紙瀹屾垚鐜?0%浠ヤ笂锛?
-    EARLY_BIRD,     // 鏃╄捣楦燂紙娓呮櫒瀹屾垚涔犳儻锛?
-    NIGHT_OWL,      // 澶滅尗瀛愶紙鏅氫笂瀹屾垚涔犳儻锛?
-    SOCIAL,         // 绀句氦杈句汉锛堝垎浜範鎯級
-    MILESTONE       // 閲岀▼纰戯紙鑷畾涔夋垚灏憋級
-}
-
-/**
- * 涔犳儻鎴愬氨寰界珷鏁版嵁绫?
- */
-data class HabitBadge(
-    val id: String = UUID.randomUUID().toString(),
-    val type: HabitBadgeType,
-    val title: String,
-    val description: String,
-    val iconUrl: String,
-    val unlockedAt: Date? = null,
-    val isUnlocked: Boolean = false
-)
-
-/**
- * 涔犳儻鏁版嵁妯″瀷
+ * 习惯数据模型
  */
 data class Habit(
     val id: String = UUID.randomUUID().toString(),
-    val title: String,                              // 涔犳儻鏍囬
-    val description: String? = null,                // 涔犳儻鎻忚堪
-    val category: HabitCategory = HabitCategory.OTHER, // 涔犳儻绫诲埆
-    val frequency: HabitFrequency = HabitFrequency.DAILY, // 鎵撳崱棰戠巼
-    val targetDays: Int = 21,                       // 鐩爣澶╂暟锛堥粯璁?1澶╁舰鎴愪範鎯級
-    val isRemindable: Boolean = false,              // 鏄惁闇€瑕佹彁閱?
-    val reminderTime: Date? = null,                 // 鎻愰啋鏃堕棿
-    val startDate: Date = Date(),                   // 寮€濮嬫棩鏈?
-    val checkInRecords: List<Date> = emptyList(),   // 鎵撳崱璁板綍
-    val badges: List<HabitBadge> = emptyList(),     // 鑾峰緱鐨勬垚灏卞窘绔?
-    val color: Long = 0xFF4A90E2,                   // 涔犳儻棰滆壊锛堥粯璁よ摑鑹诧級
-    val icon: String = "default_habit",             // 涔犳儻鍥炬爣
-    val currentStreak: Int = 0,                     // 褰撳墠杩炵画鎵撳崱澶╂暟
-    val longestStreak: Int = 0,                     // 鏈€闀胯繛缁墦鍗″ぉ鏁?
-    val totalCheckIns: Int = 0,                     // 鎬绘墦鍗℃鏁?
-    val completionRate: Float = 0f,                 // 瀹屾垚鐜?
-    val notes: List<HabitNote> = emptyList(),       // 涔犳儻绗旇
-    val isArchived: Boolean = false,                // 鏄惁褰掓。
-    val createdAt: Date = Date(),                   // 鍒涘缓鏃堕棿
-    val updatedAt: Date = Date()                    // 鏇存柊鏃堕棿
+    val title: String,                              // 习惯标题
+    val description: String? = null,                // 习惯描述
+    val category: HabitCategory = HabitCategory.OTHER, // 习惯类别
+    val frequency: HabitFrequency = HabitFrequency.DAILY, // 打卡频率
+    val targetDays: Int = 21,                       // 目标天数（默认21天形成习惯）
+    val isRemindable: Boolean = false,              // 是否需要提醒
+    val reminderTime: Date? = null,                 // 提醒时间
+    val startDate: Date = Date(),                   // 开始日期
+    val checkInRecords: List<Date> = emptyList(),   // 打卡记录
+    val color: Long = 0xFF4A90E2,                   // 习惯颜色（默认蓝色）
+    val icon: String = "default_habit",             // 习惯图标
+    val currentStreak: Int = 0,                     // 当前连续打卡天数
+    val bestStreak: Int = 0,                        // 最长连续打卡天数
+    val totalCheckIns: Int = 0,                     // 总打卡次数
+    val completionRate: Float = 0f,                 // 完成率
+    val notes: List<HabitNote> = emptyList(),       // 习惯笔记
+    val isArchived: Boolean = false,                // 是否归档
+    val createdAt: Date = Date(),                   // 创建时间
+    val updatedAt: Date = Date()                    // 更新时间
 ) {
     /**
-     * 浠婂ぉ鏄惁宸叉墦鍗?
+     * 今天是否已打卡
      */
     fun isCheckedInToday(): Boolean {
         val today = Date()
@@ -92,21 +62,21 @@ data class Habit(
     }
     
     /**
-     * 璁＄畻杩涘害鐧惧垎姣?
+     * 计算进度百分比
      */
     fun calculateProgress(): Float {
         return (totalCheckIns.toFloat() / targetDays).coerceIn(0f, 1f)
     }
     
     /**
-     * 鍒ゆ柇鏄惁宸插畬鎴愮洰鏍囧ぉ鏁?
+     * 判断是否已完成目标天数
      */
     fun isCompleted(): Boolean {
         return totalCheckIns >= targetDays
     }
     
     /**
-     * 璁＄畻涔犳儻宸插紑濮嬬殑澶╂暟
+     * 计算习惯已开始的天数
      */
     fun daysSinceStart(): Int {
         val today = Date()
@@ -116,7 +86,7 @@ data class Habit(
     
     companion object {
         /**
-         * 鍒ゆ柇涓や釜鏃ユ湡鏄惁鏄悓涓€澶?
+         * 判断两个日期是否是同一天
          */
         fun isSameDay(date1: Date, date2: Date): Boolean {
             val cal1 = java.util.Calendar.getInstance().apply { time = date1 }
