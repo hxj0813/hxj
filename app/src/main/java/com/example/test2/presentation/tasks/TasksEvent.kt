@@ -1,6 +1,7 @@
 package com.example.test2.presentation.tasks
 
 import com.example.test2.data.model.Task
+import com.example.test2.presentation.tasks.TasksUiState
 import java.util.Date
 
 /**
@@ -20,7 +21,7 @@ sealed class TasksEvent {
     /**
      * 过滤任务
      */
-    data class FilterTasks(val filter: TasksState.Filter) : TasksEvent()
+    data class FilterTasks(val filter: TasksUiState.FilterType) : TasksEvent()
     
     /**
      * 添加任务
@@ -81,4 +82,9 @@ sealed class TasksEvent {
      * 加载习惯列表（用于任务关联）
      */
     object LoadHabits : TasksEvent()
+    
+    /**
+     * 加载任务详情
+     */
+    data class LoadTaskDetail(val taskId: String) : TasksEvent()
 } 

@@ -7,312 +7,477 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Timelapse
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.test2.data.model.TaskType
-import com.example.test2.presentation.tasks.components.TaskCalendarView
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.test2.data.local.entity.TaskEntity as Task
+import com.example.test2.data.local.entity.TaskType
 import com.example.test2.presentation.tasks.components.TaskCard
 import com.example.test2.presentation.tasks.components.TaskDialog
-import com.example.test2.presentation.theme.PrimaryDark
-import com.example.test2.presentation.theme.PrimaryLight
+import com.example.test2.presentation.tasks.viewmodel.TaskManagerViewModel
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 /**
  * 任务管理屏幕
+ * 全新设计的现代任务管理界面
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TasksScreen(
-    viewModel: TasksViewModel = viewModel()
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToStatistics: () -> Unit,
+    viewModel: TaskManagerViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.combinedTaskState.collectAsState()
     val lazyListState = rememberLazyListState()
     
-    // 日期格式化器
-    val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()) }
-    val weekDayFormatter = remember { SimpleDateFormat("EEEE", Locale.getDefault()) }
+    // 颜色定义
+    val gradientColors = listOf(Color(0xFF4A90E2), Color(0xFF357ABD))
+    val accentColor = Color(0xFF4A90E2)
+    val backgroundColor = Color(0xFFF5F5F5)
+    val cardColor = Color.White
     
-    // 构建过滤器选项
-    val filters = listOf(
-        TasksState.Filter.ALL to "所有任务",
-        TasksState.Filter.TODAY to "今日任务",
-        TasksState.Filter.UPCOMING to "即将到期",
-        TasksState.Filter.HIGH_PRIORITY to "高优先级",
-        TasksState.Filter.COMPLETED to "已完成",
-        TasksState.Filter.ASSOCIATED to "关联目标"
-    )
+    // 日期格式化
+    val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.CHINA) }
+    val todayDate = remember { dateFormatter.format(Date()) }
     
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.onEvent(TasksEvent.ShowAddTaskDialog) },
-                containerColor = PrimaryLight,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier
-                    .shadow(8.dp, CircleShape)
-                    .size(56.dp)
+        topBar = {
+            // 顶部应用栏
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Transparent,
+                shadowElevation = 0.dp
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "添加任务",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // 主内容
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // 标题和日期
-                Card(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 4.dp
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "任务规划",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryDark
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = gradientColors
                             )
                         )
-                        
+                        .padding(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // 标题和日期行
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
                                 Text(
-                                    text = dateFormatter.format(state.selectedDate),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.DarkGray
+                                    text = "我的任务",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 24.sp
                                 )
-                                
                                 Text(
-                                    text = weekDayFormatter.format(state.selectedDate),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
+                                    text = todayDate,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 14.sp
                                 )
                             }
                             
-                            // 任务数量统计
-                            Surface(
-                                color = PrimaryLight.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(16.dp)
+                            // 任务统计数据和统计按钮
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "${state.filteredTasks.size}个任务",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = PrimaryDark,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
+                                // 任务统计
+                                Badge(
+                                    containerColor = Color.White.copy(alpha = 0.2f),
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = "今日: ${state.todayTasksCount}",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Badge(
+                                    containerColor = Color(0xFFFF7F7F).copy(alpha = 0.8f),
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = "逾期: ${state.overdueTasksCount}",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                // 统计按钮
+                                IconButton(onClick = onNavigateToStatistics) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Insights,
+                                        contentDescription = "任务统计",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
-                    }
-                }
-                
-                // 日历视图
-                TaskCalendarView(
-                    selectedDate = state.selectedDate,
-                    onDateSelected = { date ->
-                        viewModel.onEvent(TasksEvent.SelectDate(date))
-                    },
-                    tasksPerDay = state.getTaskCountMap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 过滤器
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(filters) { (filter, label) ->
-                        FilterChip(
-                            selected = state.currentFilter == filter,
-                            onClick = { viewModel.onEvent(TasksEvent.FilterTasks(filter)) },
-                            label = { Text(label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PrimaryLight,
-                                selectedLabelColor = Color.White
-                            )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // 搜索框
+                        OutlinedTextField(
+                            value = state.searchQuery,
+                            onValueChange = { viewModel.setSearchQuery(it) },
+                            placeholder = { Text("搜索任务...") },
+                            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = "搜索") },
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                containerColor = Color.White.copy(alpha = 0.1f),
+                                unfocusedTextColor = Color.White,
+                                focusedTextColor = Color.White,
+                                unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                                focusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                focusedBorderColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // 任务类型过滤器
+                        FilterTabs(
+                            selectedFilter = state.filterType,
+                            onFilterSelected = { viewModel.setFilterType(it) }
                         )
                     }
                 }
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { viewModel.prepareCreateTask() },
+                containerColor = accentColor,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "添加新任务"
+                )
+            }
+        },
+        containerColor = backgroundColor
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // 主内容区域
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                // 已完成/未完成任务切换
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (state.showCompletedTasks) "已完成任务" else "待办任务",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray
+                    )
+                    
+                    Switch(
+                        checked = state.showCompletedTasks,
+                        onCheckedChange = { viewModel.toggleShowCompletedTasks() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = accentColor,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color.LightGray
+                        )
+                    )
+                }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 
                 // 任务列表
-                Box(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (state.isLoading) {
-                        // 加载状态
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(48.dp),
-                                color = PrimaryLight
-                            )
-                        }
-                    } else if (state.filteredTasks.isEmpty()) {
-                        // 空状态
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = when (state.currentFilter) {
-                                    TasksState.Filter.ALL -> "当前日期没有任务"
-                                    TasksState.Filter.TODAY -> "今天没有任务"
-                                    TasksState.Filter.COMPLETED -> "没有已完成的任务"
-                                    TasksState.Filter.HIGH_PRIORITY -> "没有高优先级任务"
-                                    TasksState.Filter.UPCOMING -> "没有即将到期的任务"
-                                    TasksState.Filter.ASSOCIATED -> "没有关联目标的任务"
+                if (state.isLoading) {
+                    // 加载中状态
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = accentColor)
+                    }
+                } else if ((state.showCompletedTasks && state.completedTasks.isEmpty()) ||
+                    (!state.showCompletedTasks && state.activeTasks.isEmpty())) {
+                    // 空状态
+                    EmptyTasksView(
+                        isCompleted = state.showCompletedTasks,
+                        filterType = state.filterType
+                    )
+                } else {
+                    // 任务列表
+                    val tasks = if (state.showCompletedTasks) state.completedTasks else state.activeTasks
+                    
+                    LazyColumn(
+                        state = lazyListState,
+                        contentPadding = PaddingValues(bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = tasks,
+                            key = { it.id }
+                        ) { task ->
+                            TaskCard(
+                                task = task,
+                                onEditClick = { viewModel.prepareEditTask(task.id) },
+                                onDelete = { viewModel.deleteTask(task.id) },
+                                onToggleCompletion = { 
+                                    if (task.isCompleted) {
+                                        viewModel.uncompleteTask(task.id)
+                                    } else {
+                                        viewModel.completeTask(task.id)
+                                    }
                                 },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.Gray
-                            )
-                        }
-                    } else {
-                        // 任务列表
-                        LazyColumn(
-                            state = lazyListState,
-                            contentPadding = PaddingValues(
-                                start = 8.dp,
-                                end = 8.dp,
-                                bottom = 80.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(
-                                items = state.filteredTasks,
-                                key = { it.id }
-                            ) { task ->
-                                TaskCard(
-                                    task = task,
-                                    onEditClick = {
-                                        viewModel.onEvent(TasksEvent.ShowEditTaskDialog(task))
-                                    },
-                                    onDelete = {
-                                        viewModel.onEvent(TasksEvent.DeleteTask(task.id))
-                                    },
-                                    onToggleCompletion = {
-                                        viewModel.onEvent(TasksEvent.CompleteTask(task.id))
-                                    },
-                                    onCheckinClick = if (task.type == TaskType.CHECK_IN) {
-                                        { viewModel.onEvent(TasksEvent.CheckinTask(task.id)) }
-                                    } else null,
-                                    onStartClick = if (task.type == TaskType.POMODORO) {
-                                        { viewModel.onEvent(TasksEvent.StartPomodoroTask(task.id)) }
-                                    } else null,
-                                    modifier = Modifier.animateItemPlacement(
-                                        animationSpec = tween(300)
-                                    )
+                                onCheckinClick = if (task.getTaskTypeEnum() == TaskType.CHECK_IN) {
+                                    { viewModel.completeTask(task.id) }
+                                } else null,
+                                onStartClick = if (task.getTaskTypeEnum() == TaskType.POMODORO) {
+                                    { 
+                                        // 导航到番茄钟会话界面
+                                        onNavigateToDetail(task.id)
+                                    }
+                                } else null,
+                                onCardClick = { onNavigateToDetail(task.id) },
+                                modifier = Modifier.animateItemPlacement(
+                                    animationSpec = tween(300)
                                 )
-                            }
+                            )
                         }
                     }
                 }
             }
+
+            // 任务编辑对话框
+            if (state.error != null) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearError() },
+                    title = { Text("错误") },
+                    text = { Text(text = state.error ?: "") },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.clearError() }) {
+                            Text("确定")
+                        }
+                    }
+                )
+            }
+            
+            // 获取编辑器状态
+            val editorState by viewModel.taskEditorState.collectAsState()
             
             // 显示任务表单对话框
-            AnimatedVisibility(
-                visible = state.showDialog,
-                enter = fadeIn() + slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = tween(300)
-                ),
-                exit = fadeOut() + slideOutVertically(
-                    targetOffsetY = { it / 2 },
-                    animationSpec = tween(300)
-                )
-            ) {
+            if (editorState.isShowingTaskForm) {
                 TaskDialog(
-                    task = state.selectedTask,
-                    goals = state.goals,
-                    habits = state.habits,
-                    onDismiss = { viewModel.onEvent(TasksEvent.DismissDialog) },
-                    onSave = { task ->
-                        if (state.selectedTask == null) {
-                            viewModel.onEvent(TasksEvent.AddTask(task))
+                    taskEntity = if (editorState.isEditingTask) editorState.editingTask else null,
+                    editorState = editorState,
+                    onDismiss = { viewModel.cancelEditing() },
+                    onSave = { taskData ->
+                        if (editorState.isEditingTask) {
+                            // 更新任务
+                            viewModel.updateTaskFromEditor(
+                                taskId = editorState.editingTask?.id ?: "",
+                                title = taskData.title,
+                                description = taskData.description,
+                                taskType = taskData.taskType,
+                                taskPriority = taskData.taskPriority,
+                                dueDate = taskData.dueDate,
+                                goalId = taskData.goalId,
+                                
+                                // 打卡任务设置
+                                checkInFrequencyType = taskData.checkInFrequencyType,
+                                checkInFrequencyCount = taskData.checkInFrequencyCount,
+                                checkInReminderEnabled = taskData.checkInReminderEnabled,
+                                checkInReminderTime = taskData.checkInReminderTime,
+                                
+                                // 番茄钟任务设置
+                                pomodoroFocusTime = taskData.pomodoroFocusTime,
+                                pomodoroShortBreak = taskData.pomodoroShortBreak,
+                                pomodoroLongBreak = taskData.pomodoroLongBreak,
+                                pomodoroSessionsBeforeLongBreak = taskData.pomodoroSessionsBeforeLongBreak,
+                                pomodoroTagId = taskData.pomodoroTagId
+                            )
                         } else {
-                            viewModel.onEvent(TasksEvent.UpdateTask(task))
+                            // 创建新任务
+                            viewModel.createTaskFromEditor(
+                                title = taskData.title,
+                                description = taskData.description,
+                                taskType = taskData.taskType,
+                                taskPriority = taskData.taskPriority,
+                                dueDate = taskData.dueDate,
+                                goalId = taskData.goalId,
+                                
+                                // 打卡任务设置
+                                checkInFrequencyType = taskData.checkInFrequencyType,
+                                checkInFrequencyCount = taskData.checkInFrequencyCount,
+                                checkInReminderEnabled = taskData.checkInReminderEnabled,
+                                checkInReminderTime = taskData.checkInReminderTime,
+                                
+                                // 番茄钟任务设置
+                                pomodoroFocusTime = taskData.pomodoroFocusTime,
+                                pomodoroShortBreak = taskData.pomodoroShortBreak,
+                                pomodoroLongBreak = taskData.pomodoroLongBreak,
+                                pomodoroSessionsBeforeLongBreak = taskData.pomodoroSessionsBeforeLongBreak,
+                                pomodoroTagId = taskData.pomodoroTagId
+                            )
                         }
                     }
                 )
             }
         }
+    }
+}
+
+/**
+ * 任务类型过滤器选项卡
+ */
+@Composable
+fun FilterTabs(
+    selectedFilter: TaskType?,
+    onFilterSelected: (TaskType?) -> Unit
+) {
+    val filters = listOf(
+        Triple(null, "全部", Icons.Default.Sort),
+        Triple(TaskType.CHECK_IN, "打卡", Icons.Default.CheckCircle),
+        Triple(TaskType.POMODORO, "番茄钟", Icons.Default.Timelapse)
+    )
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        filters.forEach { (filter, label, icon) ->
+            FilterChip(
+                selected = selectedFilter == filter,
+                onClick = { onFilterSelected(filter) },
+                label = { Text(label) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color.White,
+                    selectedLabelColor = Color(0xFF4A90E2),
+                    selectedLeadingIconColor = Color(0xFF4A90E2)
+                ),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+/**
+ * 空任务视图
+ */
+@Composable
+fun EmptyTasksView(
+    isCompleted: Boolean,
+    filterType: TaskType?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        val message = when {
+            isCompleted -> "暂无已完成的任务"
+            filterType == TaskType.CHECK_IN -> "没有打卡任务"
+            filterType == TaskType.POMODORO -> "没有番茄钟任务"
+            else -> "暂无待办任务"
+        }
+        
+        val detailMessage = when {
+            isCompleted -> "完成任务后将显示在这里"
+            filterType == TaskType.CHECK_IN -> "点击+创建一个新的打卡任务"
+            filterType == TaskType.POMODORO -> "点击+创建一个新的番茄钟任务"
+            else -> "点击+创建您的第一个任务"
+        }
+        
+        // 图标或插图（可替换为实际资源）
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = CircleShape,
+            color = Color(0xFFE0E0E0)
+        ) {
+            Icon(
+                imageVector = when (filterType) {
+                    TaskType.POMODORO -> Icons.Default.Timelapse
+                    TaskType.CHECK_IN -> Icons.Default.CheckCircle
+                    else -> Icons.Default.CalendarMonth
+                },
+                contentDescription = null,
+                tint = Color.Gray,
+                modifier = Modifier
+                    .padding(24.dp)
+                    .size(72.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color.DarkGray,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = detailMessage,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
     }
 } 

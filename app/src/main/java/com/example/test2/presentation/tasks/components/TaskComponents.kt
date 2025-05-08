@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.example.test2.data.model.TaskPriority
+import com.example.test2.data.local.entity.TaskPriority
 
 /**
  * 任务优先级色块指示器
@@ -24,6 +24,7 @@ fun PriorityIndicator(
         TaskPriority.LOW -> Color(0xFF8BC34A)      // 浅绿色
         TaskPriority.MEDIUM -> Color(0xFF4FC3F7)   // 浅蓝色
         TaskPriority.HIGH -> Color(0xFFFF9800)     // 橙色
+        else -> Color.Gray                          // 默认颜色
     }
     
     Box(

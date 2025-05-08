@@ -19,8 +19,8 @@ object TimeTrackingUtils {
             TimeCategory.WORK -> Pair(Color(0xFF4285F4), Color(0xFF4285F4))      // 蓝色
             TimeCategory.STUDY -> Pair(Color(0xFF0F9D58), Color(0xFF0F9D58))     // 绿色
             TimeCategory.EXERCISE -> Pair(Color(0xFFF4B400), Color(0xFFF4B400))  // 黄色
-            TimeCategory.REST -> Pair(Color(0xFF7986CB), Color(0xFF7986CB))      // 淡紫色
-            TimeCategory.ENTERTAIN -> Pair(Color(0xFFDB4437), Color(0xFFDB4437)) // 红色
+            TimeCategory.LEISURE -> Pair(Color(0xFF7986CB), Color(0xFF7986CB))   // 淡紫色
+            TimeCategory.FOCUS -> Pair(Color(0xFFDB4437), Color(0xFFDB4437))     // 红色
             TimeCategory.OTHER -> Pair(Color(0xFF9E9E9E), Color(0xFF9E9E9E))     // 灰色
         }
     }
@@ -36,8 +36,8 @@ object TimeTrackingUtils {
             TimeCategory.WORK -> "工作"
             TimeCategory.STUDY -> "学习"
             TimeCategory.EXERCISE -> "锻炼"
-            TimeCategory.REST -> "休息"
-            TimeCategory.ENTERTAIN -> "娱乐"
+            TimeCategory.LEISURE -> "休闲"
+            TimeCategory.FOCUS -> "专注"
             TimeCategory.OTHER -> "其他"
         }
     }

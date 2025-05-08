@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.test2.data.model.Task
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
+import com.example.test2.data.repository.TimeEntryRepository
 import com.example.test2.util.DateTimeUtil
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,11 +16,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
+import javax.inject.Inject
 
 /**
  * 时间追踪ViewModel
  */
-class TimeTrackingViewModel : ViewModel() {
+@HiltViewModel
+class TimeTrackingViewModel @Inject constructor(
+    private val timeEntryRepository: TimeEntryRepository
+) : ViewModel() {
     
     private val _state = MutableStateFlow(TimeTrackingState.initial())
     val state: StateFlow<TimeTrackingState> = _state.asStateFlow()
@@ -577,7 +583,7 @@ class TimeTrackingViewModel : ViewModel() {
                 id = 6L,
                 title = "看电影",
                 description = "观看电影《信条》",
-                category = TimeCategory.ENTERTAIN,
+                category = TimeCategory.LEISURE,
                 startTime = getTimeForDaysAgo(2, 19), // 前天晚上7点
                 endTime = getTimeForDaysAgo(2, 21),   // 前天晚上9点
                 tags = listOf("娱乐", "放松")
@@ -640,5 +646,253 @@ class TimeTrackingViewModel : ViewModel() {
                 dueDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 3) }.time
             )
         )
+    }
+
+    /**
+     * 开始番茄钟会话
+     */
+    fun startPomodoroSession(taskId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            
+            try {
+                // 查找任务
+                val task = _state.value.allTasks.find { it.id.toString() == taskId }
+                
+                // 更新状态
+                _state.update { 
+                    it.copy(
+                        isLoading = false,
+                        currentTask = task,
+                        isRunning = false,
+                        isPaused = false,
+                        isBreakTime = false,
+                        remainingTimeInSeconds = (task?.pomodoroSettings?.focusMinutes ?: 25) * 60,
+                        totalTimeInSeconds = (task?.pomodoroSettings?.focusMinutes ?: 25) * 60,
+                        currentSession = 1,
+                        totalSessions = task?.pomodoroSettings?.sessionsBeforeLongBreak ?: 4,
+                        sessionCompleted = false,
+                        sessionNotes = ""
+                    )
+                }
+            } catch (e: Exception) {
+                // 处理失败的情况
+                println("加载任务失败: ${e.message}")
+                _state.update { it.copy(isLoading = false, error = "加载任务失败: ${e.message}") }
+            }
+        }
+    }
+
+    /**
+     * 开始计时器
+     */
+    fun startTimer() {
+        viewModelScope.launch {
+            _state.update { it.copy(isRunning = true, isPaused = false) }
+            
+            // 开始计时循环
+            while (_state.value.isRunning && _state.value.remainingTimeInSeconds > 0) {
+                delay(1000)
+                _state.update { 
+                    it.copy(remainingTimeInSeconds = it.remainingTimeInSeconds - 1)
+                }
+                
+                // 检查是否计时结束
+                if (_state.value.remainingTimeInSeconds <= 0) {
+                    if (_state.value.isBreakTime) {
+                        // 休息结束
+                        finishBreak()
+                    } else {
+                        // 工作阶段结束
+                        
+                        // 播放提示音效
+                        // soundManager.playCompletionSound()
+                        
+                        // 如果这是最后一个番茄钟会话，则完成整个番茄钟流程
+                        if (_state.value.currentSession >= _state.value.totalSessions) {
+                            completeSession()
+                        } else {
+                            // 否则进入休息
+                            startBreak()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 暂停计时器
+     */
+    fun pauseTimer() {
+        _state.update { it.copy(isRunning = false, isPaused = true) }
+    }
+    
+    /**
+     * 停止计时器
+     */
+    fun stopTimer() {
+        _state.update { 
+            it.copy(
+                isRunning = false, 
+                isPaused = false,
+                sessionCompleted = true
+            )
+        }
+    }
+    
+    /**
+     * 开始休息
+     */
+    private fun startBreak() {
+        val state = _state.value
+        val task = state.currentTask
+        
+        // 判断是长休息还是短休息
+        val isLongBreak = state.currentSession % (state.totalSessions) == 0
+        val breakMinutes = if (isLongBreak) {
+            task?.pomodoroSettings?.longBreakMinutes ?: 15
+        } else {
+            task?.pomodoroSettings?.shortBreakMinutes ?: 5
+        }
+        
+        _state.update { 
+            it.copy(
+                isRunning = false,
+                isPaused = false,
+                isBreakTime = true,
+                remainingTimeInSeconds = breakMinutes * 60,
+                totalTimeInSeconds = breakMinutes * 60
+            )
+        }
+    }
+    
+    /**
+     * 跳过休息
+     */
+    fun skipBreak() {
+        _state.update { 
+            it.copy(
+                isRunning = false,
+                isPaused = false,
+                isBreakTime = false,
+                remainingTimeInSeconds = (it.currentTask?.pomodoroSettings?.focusMinutes ?: 25) * 60,
+                totalTimeInSeconds = (it.currentTask?.pomodoroSettings?.focusMinutes ?: 25) * 60,
+                currentSession = it.currentSession + 1
+            )
+        }
+    }
+    
+    /**
+     * 完成休息
+     */
+    fun finishBreak() {
+        _state.update { 
+            it.copy(
+                isRunning = false,
+                isPaused = false,
+                isBreakTime = false,
+                remainingTimeInSeconds = (it.currentTask?.pomodoroSettings?.focusMinutes ?: 25) * 60,
+                totalTimeInSeconds = (it.currentTask?.pomodoroSettings?.focusMinutes ?: 25) * 60,
+                currentSession = it.currentSession + 1
+            )
+        }
+    }
+    
+    /**
+     * 确认会话完成
+     */
+    fun acknowledgeSessionCompleted() {
+        _state.update { it.copy(sessionCompleted = false) }
+    }
+    
+    /**
+     * 保存会话
+     */
+    fun saveSession(notes: String?) {
+        viewModelScope.launch {
+            _state.update { 
+                it.copy(
+                    isLoading = true,
+                    sessionCompleted = false
+                )
+            }
+            
+            try {
+                val task = _state.value.currentTask
+                if (task != null) {
+                    // 创建一个时间条目来记录这次番茄钟会话
+                    val timeEntry = TimeEntry(
+                        id = 0L, // 数据库会自动生成ID
+                        title = "专注: ${task.title}",
+                        description = notes ?: "完成了一次番茄钟专注",
+                        category = TimeCategory.FOCUS,
+                        startTime = Date(System.currentTimeMillis() - (_state.value.totalTimeInSeconds * 1000)),
+                        endTime = Date(),
+                        tags = listOf("番茄钟", "专注")
+                    )
+                    
+                    // 保存时间条目
+                    timeEntryRepository.insertTimeEntry(timeEntry)
+                    
+                    // 更新任务的番茄钟统计
+                    val pomodoroSettings = task.pomodoroSettings?.copy(
+                        todayCompletedSessions = (task.pomodoroSettings?.todayCompletedSessions ?: 0) + 1,
+                        totalCompletedSessions = (task.pomodoroSettings?.totalCompletedSessions ?: 0) + 1,
+                        totalFocusMinutes = (task.pomodoroSettings?.totalFocusMinutes ?: 0) + 
+                            (_state.value.totalTimeInSeconds / 60)
+                    )
+                    
+                    // 这里需要任务仓库来更新任务
+                    // taskRepository.updateTaskPomodoroSettings(task.id, pomodoroSettings)
+                    
+                    _state.update { 
+                        it.copy(
+                            isLoading = false,
+                            sessionNotes = notes ?: ""
+                        )
+                    }
+                } else {
+                    _state.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "无法保存会话，任务不存在"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "保存会话失败: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 清除错误
+     */
+    fun clearError() {
+        _state.update { it.copy(error = null) }
+    }
+
+    /**
+     * 完成番茄钟会话
+     */
+    fun completeSession() {
+        val state = _state.value
+        val task = state.currentTask
+        
+        if (task != null) {
+            _state.update { 
+                it.copy(
+                    isRunning = false,
+                    isPaused = false,
+                    sessionCompleted = true
+                )
+            }
+        }
     }
 } 

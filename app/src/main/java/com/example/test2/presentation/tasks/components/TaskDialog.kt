@@ -84,9 +84,11 @@ import com.example.test2.data.model.Goal
 import com.example.test2.data.model.PomodoroSettings
 import com.example.test2.data.model.PomodoroTag
 import com.example.test2.data.model.Task
-import com.example.test2.data.model.TaskPriority
+import com.example.test2.data.local.entity.TaskPriority as EntityTaskPriority
+import com.example.test2.data.model.TaskPriority as ModelTaskPriority
 import com.example.test2.data.model.TaskStatus
-import com.example.test2.data.model.TaskType
+import com.example.test2.data.local.entity.TaskType
+import com.example.test2.data.model.TaskType as ModelTaskType
 import com.example.test2.presentation.theme.PrimaryDark
 import com.example.test2.presentation.theme.PrimaryLight
 import com.example.test2.util.DateTimeUtil
@@ -95,63 +97,79 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import com.example.test2.presentation.tasks.components.PriorityIndicator
+import androidx.compose.ui.unit.sp
 
 /**
- * 任务添加/编辑对话框
+ * 任务数据模型 - 用于传递任务编辑信息
+ */
+data class TaskEditorData(
+    val title: String,
+    val description: String?,
+    val taskType: Int, // TaskType的ordinal值
+    val taskPriority: Int, // TaskPriority的ordinal值
+    val dueDate: Date?,
+    val goalId: Long?,
+    
+    // 打卡任务相关设置
+    val checkInFrequencyType: Int,
+    val checkInFrequencyCount: Int,
+    val checkInReminderEnabled: Boolean,
+    val checkInReminderTime: Date?,
+    
+    // 番茄钟任务相关设置
+    val pomodoroFocusTime: Int,
+    val pomodoroShortBreak: Int,
+    val pomodoroLongBreak: Int,
+    val pomodoroSessionsBeforeLongBreak: Int,
+    val pomodoroTagId: String?
+)
+
+/**
+ * 任务添加/编辑对话框 - 与TaskManagerViewModel集成版本
  *
- * @param task 要编辑的任务，如果为null则为添加新任务
- * @param goals 可关联的目标列表
- * @param habits 可关联的习惯列表
+ * @param taskEntity 任务实体，用于编辑已有任务
+ * @param editorState 任务编辑器状态
  * @param onDismiss 取消回调
- * @param onSave 保存回调
+ * @param onSave 保存回调，返回TaskEditorData
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDialog(
-    task: Task? = null,
-    goals: List<Goal> = emptyList(),
-    habits: List<Any> = emptyList(), // 这里应该使用习惯模型，暂时用Any代替
+    taskEntity: com.example.test2.data.local.entity.TaskEntity? = null,
+    editorState: com.example.test2.presentation.tasks.viewmodel.TaskEditorState,
     onDismiss: () -> Unit,
-    onSave: (Task) -> Unit
+    onSave: (TaskEditorData) -> Unit
 ) {
-    // 表单状态
-    var title by remember { mutableStateOf(task?.title ?: "") }
-    var description by remember { mutableStateOf(task?.description ?: "") }
-    var taskType by remember { mutableStateOf(task?.type ?: TaskType.NORMAL) }
-    var priority by remember { mutableStateOf(task?.priority ?: TaskPriority.MEDIUM) }
-    var dueDate by remember { mutableStateOf(task?.dueDate ?: Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) } // 默认明天
-    var selectedGoalId by remember { mutableStateOf(task?.goalId) }
-    var selectedHabitId by remember { mutableStateOf(task?.habitId) }
+    // 表单状态 - 优先使用editorState中的值，其次是taskEntity中的值
+    var title by remember { mutableStateOf(editorState.newTaskTitle.ifEmpty { taskEntity?.title ?: "" }) }
+    var description by remember { mutableStateOf(editorState.newTaskDescription.ifEmpty { taskEntity?.description ?: "" }) }
+    var taskType by remember { mutableStateOf(editorState.newTaskType) }
+    var priority by remember { mutableStateOf(editorState.newTaskPriority) }
+    var dueDate by remember { mutableStateOf(editorState.newTaskDueDate ?: taskEntity?.dueDate ?: Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) }
+    var selectedGoalId by remember { mutableStateOf(editorState.newTaskGoalId ?: taskEntity?.goalId) }
     
     // 打卡任务设置
-    var checkInFrequencyType by remember { 
-        mutableStateOf(task?.checkInSettings?.frequencyType ?: CheckInFrequencyType.DAILY) 
+    var checkInFrequencyType by remember { mutableStateOf(editorState.newCheckInFrequencyType) }
+    var checkInFrequency by remember { mutableStateOf(editorState.newCheckInFrequencyCount) }
+    var hasDailyDeadline by remember { mutableStateOf(editorState.newCheckInReminderEnabled) }
+    var dailyDeadlineHour by remember { mutableStateOf(8) } // 默认8点
+    var dailyDeadlineMinute by remember { mutableStateOf(0) } // 默认0分
+    
+    // 如果有提醒时间，则解析小时和分钟
+    LaunchedEffect(editorState.newCheckInReminderTime) {
+        editorState.newCheckInReminderTime?.let { reminderTime ->
+            val calendar = Calendar.getInstance().apply { time = reminderTime }
+            dailyDeadlineHour = calendar.get(Calendar.HOUR_OF_DAY)
+            dailyDeadlineMinute = calendar.get(Calendar.MINUTE)
+        }
     }
-    var checkInFrequency by remember { mutableStateOf(task?.checkInSettings?.frequency ?: 1) }
-    var hasDailyDeadline by remember { mutableStateOf(task?.checkInSettings?.dailyDeadline != null) }
-    var dailyDeadlineHour by remember { mutableStateOf(task?.checkInSettings?.dailyDeadline?.let {
-        val cal = Calendar.getInstance().apply { time = it }
-        cal.get(Calendar.HOUR_OF_DAY)
-    } ?: 8) }
-    var dailyDeadlineMinute by remember { mutableStateOf(task?.checkInSettings?.dailyDeadline?.let {
-        val cal = Calendar.getInstance().apply { time = it }
-        cal.get(Calendar.MINUTE)
-    } ?: 0) }
     
     // 番茄钟任务设置
-    var focusMinutes by remember { mutableStateOf(task?.pomodoroSettings?.focusMinutes ?: 25) }
-    var shortBreakMinutes by remember { mutableStateOf(task?.pomodoroSettings?.shortBreakMinutes ?: 5) }
-    var longBreakMinutes by remember { mutableStateOf(task?.pomodoroSettings?.longBreakMinutes ?: 15) }
-    var sessionsBeforeLongBreak by remember { 
-        mutableStateOf(task?.pomodoroSettings?.sessionsBeforeLongBreak ?: 4) 
-    }
-    var pomodoroTag by remember { 
-        mutableStateOf(task?.pomodoroSettings?.tag ?: PomodoroTag.STUDY) 
-    }
-    var customTagName by remember { 
-        mutableStateOf(task?.pomodoroSettings?.customTagName ?: "") 
-    }
-    var tagMenuExpanded by remember { mutableStateOf(false) }
+    var focusMinutes by remember { mutableStateOf(editorState.newPomodoroDuration) }
+    var shortBreakMinutes by remember { mutableStateOf(editorState.newPomodoroShortBreak) }
+    var longBreakMinutes by remember { mutableStateOf(editorState.newPomodoroLongBreak) }
+    var sessionsBeforeLongBreak by remember { mutableStateOf(editorState.newPomodoroEstimatedCount) }
+    var pomodoroTagId by remember { mutableStateOf(editorState.newPomodoroTagId) }
     
     // 日期格式化器
     val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()) }
@@ -160,7 +178,6 @@ fun TaskDialog(
     // 各种下拉菜单状态
     var priorityMenuExpanded by remember { mutableStateOf(false) }
     var goalMenuExpanded by remember { mutableStateOf(false) }
-    var habitMenuExpanded by remember { mutableStateOf(false) }
     var datePickerExpanded by remember { mutableStateOf(false) }
     var timePickerExpanded by remember { mutableStateOf(false) }
     
@@ -210,7 +227,7 @@ fun TaskDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (task == null) "添加新任务" else "编辑任务",
+                        text = if (editorState.isEditingTask) "编辑任务" else "添加新任务",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold
                         )
@@ -242,21 +259,15 @@ fun TaskDialog(
                 
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
-                        selected = taskType == TaskType.NORMAL,
-                        onClick = { taskType = TaskType.NORMAL },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                        label = { Text("普通") }
-                    )
-                    SegmentedButton(
                         selected = taskType == TaskType.CHECK_IN,
                         onClick = { taskType = TaskType.CHECK_IN },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         label = { Text("打卡") }
                     )
                     SegmentedButton(
                         selected = taskType == TaskType.POMODORO,
                         onClick = { taskType = TaskType.POMODORO },
-                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         label = { Text("番茄钟") }
                     )
                 }
@@ -325,102 +336,46 @@ fun TaskDialog(
                     Spacer(modifier = Modifier.weight(1f))
                     
                     Icon(
-                        imageVector = if (datePickerExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (datePickerExpanded) "收起" else "展开",
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "选择日期",
                         tint = Color.Gray
                     )
                 }
                 
-                // 日期选择器
-                AnimatedVisibility(
-                    visible = datePickerExpanded,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        val calendar = Calendar.getInstance().apply {
-                            time = dueDate
-                        }
-                        
-                        // 预设选项
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            DateOption(
-                                text = "今天",
-                                onClick = {
-                                    dueDate = Calendar.getInstance().time
-                                    datePickerExpanded = false
-                                }
-                            )
-                            
-                            DateOption(
-                                text = "明天",
-                                onClick = {
-                                    val tomorrow = Calendar.getInstance().apply {
-                                        add(Calendar.DAY_OF_MONTH, 1)
-                                    }
-                                    dueDate = tomorrow.time
-                                    datePickerExpanded = false
-                                }
-                            )
-                            
-                            DateOption(
-                                text = "后天",
-                                onClick = {
-                                    val dayAfterTomorrow = Calendar.getInstance().apply {
-                                        add(Calendar.DAY_OF_MONTH, 2)
-                                    }
-                                    dueDate = dayAfterTomorrow.time
-                                    datePickerExpanded = false
-                                }
-                            )
-                            
-                            DateOption(
-                                text = "下周",
-                                onClick = {
-                                    val nextWeek = Calendar.getInstance().apply {
-                                        add(Calendar.WEEK_OF_YEAR, 1)
-                                    }
-                                    dueDate = nextWeek.time
-                                    datePickerExpanded = false
-                                }
-                            )
-                        }
-                        
-                        // 这里可以添加更多日期选择器功能
-                    }
-                }
-                
+                // 优先级选择
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 优先级选择
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { priorityMenuExpanded = true },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    PriorityIndicator(
-                        priority = priority,
-                        modifier = Modifier.size(16.dp)
+                    val priorityColor = when (priority) {
+                        EntityTaskPriority.LOW -> Color(0xFF8BC34A)
+                        EntityTaskPriority.MEDIUM -> Color(0xFF4FC3F7)
+                        EntityTaskPriority.HIGH -> Color(0xFFFF9800)
+                        else -> Color.Gray
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(priorityColor)
                     )
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
+                    val priorityText = when (priority) {
+                        EntityTaskPriority.LOW -> "低优先级"
+                        EntityTaskPriority.MEDIUM -> "中优先级"
+                        EntityTaskPriority.HIGH -> "高优先级"
+                        else -> "中优先级"
+                    }
+                    
                     Text(
-                        text = "优先级: ${
-                            when(priority) {
-                                TaskPriority.LOW -> "低"
-                                TaskPriority.MEDIUM -> "中"
-                                TaskPriority.HIGH -> "高"
-                            }
-                        }",
+                        text = "优先级: $priorityText",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
@@ -440,16 +395,18 @@ fun TaskDialog(
                         DropdownMenuItem(
                             text = { 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    PriorityIndicator(
-                                        priority = TaskPriority.LOW,
-                                        modifier = Modifier.size(12.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF8BC34A))
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("低优先级") 
                                 }
                             },
                             onClick = { 
-                                priority = TaskPriority.LOW
+                                priority = EntityTaskPriority.LOW
                                 priorityMenuExpanded = false
                             }
                         )
@@ -457,16 +414,18 @@ fun TaskDialog(
                         DropdownMenuItem(
                             text = { 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    PriorityIndicator(
-                                        priority = TaskPriority.MEDIUM,
-                                        modifier = Modifier.size(12.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF4FC3F7))
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("中优先级") 
                                 }
                             },
                             onClick = { 
-                                priority = TaskPriority.MEDIUM
+                                priority = EntityTaskPriority.MEDIUM
                                 priorityMenuExpanded = false
                             }
                         )
@@ -474,520 +433,452 @@ fun TaskDialog(
                         DropdownMenuItem(
                             text = { 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    PriorityIndicator(
-                                        priority = TaskPriority.HIGH,
-                                        modifier = Modifier.size(12.dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFFF9800))
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("高优先级") 
                                 }
                             },
                             onClick = { 
-                                priority = TaskPriority.HIGH
+                                priority = EntityTaskPriority.HIGH
                                 priorityMenuExpanded = false
                             }
                         )
                     }
                 }
                 
-                // 如果有可用习惯，显示习惯选择
-                if (habits.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { habitMenuExpanded = true },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Timeline,
-                            contentDescription = "关联习惯",
-                            tint = PrimaryLight,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        val habitTitle = if (selectedHabitId != null) {
-                            val selectedHabit = habits.find { 
-                                val habitMap = it as? Map<*, *>
-                                habitMap?.get("id")?.toString() == selectedHabitId 
-                            }
-                            if (selectedHabit != null) {
-                                val habitMap = selectedHabit as? Map<*, *>
-                                habitMap?.get("title")?.toString() ?: "未知习惯"
-                            } else {
-                                "无"
-                            }
-                        } else {
-                            "无"
-                        }
-                        
-                        Text(
-                            text = "关联习惯: $habitTitle",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        
-                        Spacer(modifier = Modifier.weight(1f))
-                        
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "选择习惯",
-                            tint = Color.Gray
-                        )
-                        
-                        // 习惯下拉菜单
-                        DropdownMenu(
-                            expanded = habitMenuExpanded,
-                            onDismissRequest = { habitMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("无") },
-                                onClick = { 
-                                    selectedHabitId = null
-                                    habitMenuExpanded = false
-                                }
-                            )
-                            
-                            habits.forEach { habit ->
-                                val habitMap = habit as? Map<*, *>
-                                val habitId = habitMap?.get("id")?.toString() ?: ""
-                                val habitTitle = habitMap?.get("title")?.toString() ?: "未知习惯"
-                                val habitDescription = habitMap?.get("description")?.toString() ?: ""
-                                
-                                DropdownMenuItem(
-                                    text = { 
-                                        Column {
-                                            Text(habitTitle, fontWeight = FontWeight.Medium)
-                                            if (habitDescription.isNotEmpty()) {
-                                                Text(
-                                                    text = habitDescription,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = Color.Gray,
-                                                    maxLines = 1
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = { 
-                                        selectedHabitId = habitId
-                                        habitMenuExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                // 如果有可用目标，显示目标选择
-                if (goals.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { goalMenuExpanded = true },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Flag,
-                            contentDescription = "关联目标",
-                            tint = PrimaryLight,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Text(
-                            text = "关联目标: ${goals.find { it.id == selectedGoalId }?.title ?: "无"}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        
-                        Spacer(modifier = Modifier.weight(1f))
-                        
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "选择目标",
-                            tint = Color.Gray
-                        )
-                        
-                        // 目标下拉菜单
-                        DropdownMenu(
-                            expanded = goalMenuExpanded,
-                            onDismissRequest = { goalMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("无") },
-                                onClick = { 
-                                    selectedGoalId = null
-                                    goalMenuExpanded = false
-                                }
-                            )
-                            
-                            goals.forEach { goal ->
-                                DropdownMenuItem(
-                                    text = { Text(goal.title) },
-                                    onClick = { 
-                                        selectedGoalId = goal.id
-                                        goalMenuExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                // 分隔线
-                Spacer(modifier = Modifier.height(16.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 任务类型特定设置
+                // 根据任务类型显示不同的设置面板
                 when (taskType) {
                     TaskType.CHECK_IN -> {
-                        // 打卡任务特定设置
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // 打卡任务设置
                         Text(
                             text = "打卡设置",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
                             )
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // 打卡频率类型选择
+                        // 打卡频率
                         Text(
-                            text = "打卡频率类型",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "打卡频率",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
                         )
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
+                        // 打卡频率类型选择
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // 每日打卡
                             FilterChip(
-                                selected = checkInFrequencyType == CheckInFrequencyType.DAILY,
-                                onClick = { checkInFrequencyType = CheckInFrequencyType.DAILY },
-                                label = { Text("每日打卡次数") }
+                                selected = checkInFrequencyType == 0,
+                                onClick = { checkInFrequencyType = 0 },
+                                label = { Text("每日") },
+                                modifier = Modifier.weight(1f)
                             )
                             
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            // 每周打卡
                             FilterChip(
-                                selected = checkInFrequencyType == CheckInFrequencyType.WEEKLY,
-                                onClick = { checkInFrequencyType = CheckInFrequencyType.WEEKLY },
-                                label = { Text("每周打卡天数") }
+                                selected = checkInFrequencyType == 1,
+                                onClick = { checkInFrequencyType = 1 },
+                                label = { Text("每周") },
+                                modifier = Modifier.weight(1f)
                             )
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // 打卡频率设置
-                        OutlinedTextField(
-                            value = checkInFrequency.toString(),
-                            onValueChange = { 
-                                val value = it.toIntOrNull() ?: 1
-                                checkInFrequency = if (value > 0) value else 1
-                            },
-                            label = { 
-                                Text(
-                                    if (checkInFrequencyType == CheckInFrequencyType.DAILY) 
-                                        "每日打卡次数" 
-                                    else 
-                                        "每周打卡天数"
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // 每日打卡截止时间
+                        // 打卡次数选择
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "设置每日打卡截止时间",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
+                                text = if (checkInFrequencyType == 0) "每日打卡次数" else "每周打卡天数",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // 减少按钮
+                            IconButton(
+                                onClick = { 
+                                    if (checkInFrequency > 1) {
+                                        checkInFrequency-- 
+                                    }
+                                }
+                            ) {
+                                Text("-", fontSize = 20.sp)
+                            }
+                            
+                            // 次数显示
+                            Text(
+                                text = checkInFrequency.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // 增加按钮
+                            IconButton(
+                                onClick = { 
+                                    if (checkInFrequency < (if (checkInFrequencyType == 0) 10 else 7)) {
+                                        checkInFrequency++ 
+                                    }
+                                }
+                            ) {
+                                Text("+", fontSize = 20.sp)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // 是否设置提醒
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "每日打卡提醒",
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             
                             Switch(
                                 checked = hasDailyDeadline,
                                 onCheckedChange = { hasDailyDeadline = it },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = PrimaryLight,
-                                    checkedTrackColor = PrimaryLight.copy(alpha = 0.5f)
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = PrimaryLight
                                 )
                             )
                         }
                         
+                        // 提醒时间选择
                         AnimatedVisibility(visible = hasDailyDeadline) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { timePickerExpanded = true }
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccessTime,
-                                    contentDescription = "每日截止时间",
-                                    tint = PrimaryLight
-                                )
+                            Column {
+                                Spacer(modifier = Modifier.height(8.dp))
                                 
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                val calendar = Calendar.getInstance().apply {
-                                    set(Calendar.HOUR_OF_DAY, dailyDeadlineHour)
-                                    set(Calendar.MINUTE, dailyDeadlineMinute)
-                                }
-                                
-                                Text(
-                                    text = "截止时间: ${timeFormatter.format(calendar.time)}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            
-                            // 时间选择器对话框
-                            if (timePickerExpanded) {
-                                Dialog(onDismissRequest = { timePickerExpanded = false }) {
-                                    Surface(
-                                        shape = MaterialTheme.shapes.extraLarge,
-                                        color = MaterialTheme.colorScheme.surface
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Text(
-                                                text = "选择截止时间",
-                                                style = MaterialTheme.typography.titleMedium
-                                            )
-                                            
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            
-                                            TimePicker(state = timePickerState)
-                                            
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.End
-                                            ) {
-                                                TextButton(onClick = { timePickerExpanded = false }) {
-                                                    Text("取消")
-                                                }
-                                                
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                
-                                                Button(onClick = {
-                                                    dailyDeadlineHour = timePickerState.hour
-                                                    dailyDeadlineMinute = timePickerState.minute
-                                                    timePickerExpanded = false
-                                                }) {
-                                                    Text("确定")
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    TaskType.POMODORO -> {
-                        // 番茄钟任务特定设置
-                        Text(
-                            text = "番茄钟设置",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // 标签选择
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            OutlinedTextField(
-                                value = if (pomodoroTag == PomodoroTag.CUSTOM) 
-                                    customTagName ?: "自定义" 
-                                else
-                                    pomodoroTag.getDisplayName(),
-                                onValueChange = { 
-                                    if (pomodoroTag == PomodoroTag.CUSTOM) {
-                                        customTagName = it
-                                    }
-                                },
-                                label = { Text("标签") },
-                                readOnly = pomodoroTag != PomodoroTag.CUSTOM,
-                                trailingIcon = {
-                                    IconButton(onClick = { tagMenuExpanded = true }) {
-                                        Icon(Icons.Filled.ArrowDropDown, "展开标签选择")
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            
-                            DropdownMenu(
-                                expanded = tagMenuExpanded,
-                                onDismissRequest = { tagMenuExpanded = false },
-                                modifier = Modifier.width(250.dp)
-                            ) {
-                                PomodoroTag.values().forEach { tag ->
-                                    DropdownMenuItem(
-                                        text = { 
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(16.dp)
-                                                        .background(
-                                                            color = Color(tag.getColor()),
-                                                            shape = CircleShape
-                                                        )
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(tag.getDisplayName())
-                                            }
-                                        },
-                                        onClick = {
-                                            pomodoroTag = tag
-                                            tagMenuExpanded = false
-                                        }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { timePickerExpanded = true },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccessTime,
+                                        contentDescription = "提醒时间",
+                                        tint = PrimaryLight,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    Text(
+                                        text = "提醒时间: ${String.format("%02d:%02d", dailyDeadlineHour, dailyDeadlineMinute)}",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "选择时间",
+                                        tint = Color.Gray
                                     )
                                 }
                             }
                         }
-                        
-                        // 自定义标签名称输入
-                        if (pomodoroTag == PomodoroTag.CUSTOM) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = customTagName ?: "",
-                                onValueChange = { customTagName = it },
-                                label = { Text("自定义标签名称") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        
+                    }
+                    TaskType.POMODORO -> {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // 专注时长设置
-                        OutlinedTextField(
-                            value = focusMinutes.toString(),
-                            onValueChange = { 
-                                val value = it.toIntOrNull() ?: 25
-                                focusMinutes = if (value > 0) value else 25
-                            },
-                            label = { Text("专注时长 (分钟)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
+                        // 番茄钟任务设置
+                        Text(
+                            text = "番茄钟设置",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            )
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // 短休息时长设置
-                        OutlinedTextField(
-                            value = shortBreakMinutes.toString(),
-                            onValueChange = { 
-                                val value = it.toIntOrNull() ?: 5
-                                shortBreakMinutes = if (value > 0) value else 5
-                            },
-                            label = { Text("短休息时长 (分钟)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // 专注时长
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "专注时长(分钟)",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // 减少按钮
+                            IconButton(
+                                onClick = { 
+                                    if (focusMinutes > 5) {
+                                        focusMinutes -= 5
+                                    }
+                                }
+                            ) {
+                                Text("-", fontSize = 20.sp)
+                            }
+                            
+                            // 时长显示
+                            Text(
+                                text = focusMinutes.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // 增加按钮
+                            IconButton(
+                                onClick = { 
+                                    if (focusMinutes < 60) {
+                                        focusMinutes += 5
+                                    }
+                                }
+                            ) {
+                                Text("+", fontSize = 20.sp)
+                            }
+                        }
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // 长休息时长设置
-                        OutlinedTextField(
-                            value = longBreakMinutes.toString(),
-                            onValueChange = { 
-                                val value = it.toIntOrNull() ?: 15
-                                longBreakMinutes = if (value > 0) value else 15
-                            },
-                            label = { Text("长休息时长 (分钟)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        // 短休息时长
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "短休息时长(分钟)",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // 减少按钮
+                            IconButton(
+                                onClick = { 
+                                    if (shortBreakMinutes > 1) {
+                                        shortBreakMinutes--
+                                    }
+                                }
+                            ) {
+                                Text("-", fontSize = 20.sp)
+                            }
+                            
+                            // 时长显示
+                            Text(
+                                text = shortBreakMinutes.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // 增加按钮
+                            IconButton(
+                                onClick = { 
+                                    if (shortBreakMinutes < 15) {
+                                        shortBreakMinutes++
+                                    }
+                                }
+                            ) {
+                                Text("+", fontSize = 20.sp)
+                            }
+                        }
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // 长休息前的番茄钟数量设置
-                        OutlinedTextField(
-                            value = sessionsBeforeLongBreak.toString(),
-                            onValueChange = { 
-                                val value = it.toIntOrNull() ?: 4
-                                sessionsBeforeLongBreak = if (value > 0) value else 4
-                            },
-                            label = { Text("长休息前的番茄钟数量") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    
-                    else -> {
-                        // 普通任务不需要特殊设置
+                        // 长休息时长
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "长休息时长(分钟)",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // 减少按钮
+                            IconButton(
+                                onClick = { 
+                                    if (longBreakMinutes > 5) {
+                                        longBreakMinutes -= 5
+                                    }
+                                }
+                            ) {
+                                Text("-", fontSize = 20.sp)
+                            }
+                            
+                            // 时长显示
+                            Text(
+                                text = longBreakMinutes.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // 增加按钮
+                            IconButton(
+                                onClick = { 
+                                    if (longBreakMinutes < 30) {
+                                        longBreakMinutes += 5
+                                    }
+                                }
+                            ) {
+                                Text("+", fontSize = 20.sp)
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // 长休息间隔
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "长休息间隔(个番茄钟)",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // 减少按钮
+                            IconButton(
+                                onClick = { 
+                                    if (sessionsBeforeLongBreak > 1) {
+                                        sessionsBeforeLongBreak--
+                                    }
+                                }
+                            ) {
+                                Text("-", fontSize = 20.sp)
+                            }
+                            
+                            // 次数显示
+                            Text(
+                                text = sessionsBeforeLongBreak.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // 增加按钮
+                            IconButton(
+                                onClick = { 
+                                    if (sessionsBeforeLongBreak < 8) {
+                                        sessionsBeforeLongBreak++
+                                    }
+                                }
+                            ) {
+                                Text("+", fontSize = 20.sp)
+                            }
+                        }
                     }
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // 按钮区
+                // 底部按钮
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(
-                        onClick = onDismiss
-                    ) {
+                    // 取消按钮
+                    TextButton(onClick = onDismiss) {
                         Text("取消")
                     }
                     
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    // 保存按钮
                     Button(
                         onClick = {
+                            // 只有标题有效才能保存
                             if (isTitleValid) {
-                                // 创建任务对象
-                                val updatedTask = createTaskFromForm(
-                                    task = task,
+                                // 准备提醒时间
+                                val reminderTime = if (hasDailyDeadline) {
+                                    Calendar.getInstance().apply {
+                                        set(Calendar.HOUR_OF_DAY, dailyDeadlineHour)
+                                        set(Calendar.MINUTE, dailyDeadlineMinute)
+                                        set(Calendar.SECOND, 0)
+                                        set(Calendar.MILLISECOND, 0)
+                                    }.time
+                                } else null
+                                
+                                // 创建任务数据对象
+                                val taskData = TaskEditorData(
                                     title = title,
-                                    description = description,
-                                    taskType = taskType,
-                                    priority = priority,
+                                    description = description.takeIf { it.isNotBlank() },
+                                    taskType = taskType.ordinal,
+                                    taskPriority = priority.ordinal,
                                     dueDate = dueDate,
                                     goalId = selectedGoalId,
-                                    habitId = selectedHabitId,
+                                    
+                                    // 打卡任务设置
                                     checkInFrequencyType = checkInFrequencyType,
-                                    checkInFrequency = checkInFrequency,
-                                    hasDailyDeadline = hasDailyDeadline,
-                                    dailyDeadlineHour = dailyDeadlineHour,
-                                    dailyDeadlineMinute = dailyDeadlineMinute,
-                                    focusMinutes = focusMinutes,
-                                    shortBreakMinutes = shortBreakMinutes,
-                                    longBreakMinutes = longBreakMinutes,
-                                    sessionsBeforeLongBreak = sessionsBeforeLongBreak,
-                                    pomodoroTag = pomodoroTag,
-                                    customTagName = customTagName,
-                                    habits = habits
+                                    checkInFrequencyCount = checkInFrequency,
+                                    checkInReminderEnabled = hasDailyDeadline,
+                                    checkInReminderTime = reminderTime,
+                                    
+                                    // 番茄钟任务设置
+                                    pomodoroFocusTime = focusMinutes,
+                                    pomodoroShortBreak = shortBreakMinutes,
+                                    pomodoroLongBreak = longBreakMinutes,
+                                    pomodoroSessionsBeforeLongBreak = sessionsBeforeLongBreak,
+                                    pomodoroTagId = pomodoroTagId
                                 )
-                                onSave(updatedTask)
+                                
+                                onSave(taskData)
                             }
                         },
                         enabled = isTitleValid,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryLight
-                        ),
-                        modifier = Modifier.padding(start = 8.dp)
+                            containerColor = PrimaryLight,
+                            disabledContainerColor = Color.LightGray
+                        )
                     ) {
-                        Text(if (task == null) "添加" else "保存")
+                        Text("保存")
                     }
                 }
             }
         }
+    }
+}
+
+// 转换TaskPriority枚举类型
+private fun convertToModelPriority(entityPriority: EntityTaskPriority): ModelTaskPriority {
+    return when (entityPriority) {
+        EntityTaskPriority.LOW -> ModelTaskPriority.LOW
+        EntityTaskPriority.MEDIUM -> ModelTaskPriority.MEDIUM
+        EntityTaskPriority.HIGH -> ModelTaskPriority.HIGH
+        else -> ModelTaskPriority.MEDIUM
+    }
+}
+
+private fun convertToEntityPriority(modelPriority: ModelTaskPriority): EntityTaskPriority {
+    return when (modelPriority) {
+        ModelTaskPriority.LOW -> EntityTaskPriority.LOW
+        ModelTaskPriority.MEDIUM -> EntityTaskPriority.MEDIUM
+        ModelTaskPriority.HIGH -> EntityTaskPriority.HIGH
     }
 }
 
@@ -999,7 +890,7 @@ private fun createTaskFromForm(
     title: String,
     description: String?,
     taskType: TaskType,
-    priority: TaskPriority,
+    priority: EntityTaskPriority,
     dueDate: Date?,
     goalId: Long?,
     habitId: String?,
@@ -1025,6 +916,13 @@ private fun createTaskFromForm(
             set(Calendar.MILLISECOND, 0)
         }.time
     } else null
+    
+    // 将实体层TaskType转换为模型层ModelTaskType
+    val modelTaskType = when (taskType) {
+        TaskType.CHECK_IN -> ModelTaskType.CHECK_IN
+        TaskType.POMODORO -> ModelTaskType.POMODORO
+        else -> ModelTaskType.CHECK_IN  // 默认值
+    }
     
     // 创建打卡设置
     val checkInSettings = if (taskType == TaskType.CHECK_IN) {
@@ -1080,8 +978,8 @@ private fun createTaskFromForm(
         id = task?.id ?: 0L,
         title = title,
         description = description,
-        type = taskType,
-        priority = priority,
+        type = modelTaskType,
+        priority = convertToModelPriority(priority),
         dueDate = dueDate,
         goalId = goalId,
         goalTitle = goalTitle,

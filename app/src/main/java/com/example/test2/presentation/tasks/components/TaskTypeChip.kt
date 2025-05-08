@@ -27,8 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.PomodoroSettings
 import com.example.test2.data.model.PomodoroTag
-import com.example.test2.data.model.Task
-import com.example.test2.data.model.TaskType
+import com.example.test2.data.local.entity.TaskType
 
 /**
  * 任务类型标签组件
@@ -45,12 +44,6 @@ fun TaskTypeChip(
 ) {
     // 根据任务类型确定显示内容
     val chipData = when (taskType) {
-        TaskType.NORMAL -> ChipData(
-            backgroundColor = Color(0xFFE3F2FD),  // 浅蓝色
-            contentColor = Color(0xFF1976D2),     // 蓝色
-            icon = Icons.Outlined.Assignment,
-            label = "普通任务"
-        )
         TaskType.CHECK_IN -> ChipData(
             backgroundColor = Color(0xFFE8F5E9),  // 浅绿色
             contentColor = Color(0xFF4CAF50),     // 绿色
@@ -72,6 +65,12 @@ fun TaskTypeChip(
                 label = "番茄钟 - $tagName"
             )
         }
+        else -> ChipData(
+            backgroundColor = Color(0xFFE3F2FD),  // 浅蓝色
+            contentColor = Color(0xFF1976D2),     // 蓝色
+            icon = Icons.Outlined.Assignment,
+            label = "其他任务"
+        )
     }
     
     // 渲染标签

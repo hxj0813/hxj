@@ -12,14 +12,23 @@ import com.example.test2.data.local.dao.HabitDao
 import com.example.test2.data.local.dao.HabitLogDao
 import com.example.test2.data.local.dao.NoteDao
 import com.example.test2.data.local.dao.UserBadgeDao
-//import com.example.test2.data.local.dao.TaskDao
+import com.example.test2.data.local.dao.TaskDao
+import com.example.test2.data.local.dao.CheckInTaskDao
+import com.example.test2.data.local.dao.PomodoroTaskDao
+import com.example.test2.data.local.dao.TaskTagDao
+import com.example.test2.data.local.dao.TaskLogDao
 import com.example.test2.data.local.entity.BadgeEntity
 import com.example.test2.data.local.entity.GoalEntity
 import com.example.test2.data.local.entity.HabitEntity
 import com.example.test2.data.local.entity.HabitLogEntity
 import com.example.test2.data.local.entity.NoteEntity
 import com.example.test2.data.local.entity.UserBadgeEntity
-//import com.example.test2.data.local.entity.TaskEntity
+import com.example.test2.data.local.entity.TaskEntity
+import com.example.test2.data.local.entity.CheckInTaskEntity
+import com.example.test2.data.local.entity.PomodoroTaskEntity
+import com.example.test2.data.local.entity.TaskTagEntity
+import com.example.test2.data.local.entity.TaskLogEntity
+import com.example.test2.data.local.migration.DatabaseMigrations
 
 /**
  * 应用数据库类
@@ -32,8 +41,12 @@ import com.example.test2.data.local.entity.UserBadgeEntity
         HabitEntity::class,
         HabitLogEntity::class,
         BadgeEntity::class,
-        UserBadgeEntity::class
-        //TaskEntity::class
+        UserBadgeEntity::class,
+        TaskEntity::class,
+        CheckInTaskEntity::class,
+        PomodoroTaskEntity::class,
+        TaskTagEntity::class,
+        TaskLogEntity::class
         // 随着应用扩展，可以在这里添加更多实体
     ],
     version = 2,
@@ -74,7 +87,27 @@ abstract class AppDatabase : RoomDatabase() {
     /**
      * 获取任务DAO
      */
-    //abstract fun taskDao(): TaskDao
+    abstract fun taskDao(): TaskDao
+    
+    /**
+     * 获取签到任务DAO
+     */
+    abstract fun checkInTaskDao(): CheckInTaskDao
+    
+    /**
+     * 获取番茄任务DAO
+     */
+    abstract fun pomodoroTaskDao(): PomodoroTaskDao
+    
+    /**
+     * 获取任务标签DAO
+     */
+    abstract fun taskTagDao(): TaskTagDao
+    
+    /**
+     * 获取任务日志DAO
+     */
+    abstract fun taskLogDao(): TaskLogDao
     
     // 随着应用扩展，可以在这里添加更多DAO获取方法
     
@@ -94,7 +127,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                .fallbackToDestructiveMigration() // 升级数据库时删除旧数据，仅用于开发阶段
+                // 添加迁移策略
+                .addMigrations(DatabaseMigrations.MIGRATION_1_2)
+                // 当没有找到迁移路径时才使用破坏性迁移
+                .fallbackToDestructiveMigration()
                 .build()
                 
                 INSTANCE = instance

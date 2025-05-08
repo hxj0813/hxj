@@ -4,8 +4,10 @@ import com.example.test2.data.local.dao.GoalDao
 import com.example.test2.data.local.dao.NoteDao
 import com.example.test2.data.repository.GoalRepository
 import com.example.test2.data.repository.NoteRepository
+import com.example.test2.data.repository.TimeEntryRepository
 import com.example.test2.data.repository.impl.GoalRepositoryImpl
 import com.example.test2.data.repository.impl.NoteRepositoryImpl
+import com.example.test2.data.repository.impl.TimeEntryRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -40,5 +42,17 @@ object RepositoryModule {
         return NoteRepositoryImpl(noteDao)
     }
     
-    // 随着应用扩展，可以在此添加更多Repository的Provider方法
+    /**
+     * 提供TimeEntryRepository实例
+     * 使用TimeEntryRepositoryImpl作为具体实现
+     */
+    @Provides
+    @Singleton
+    fun provideTimeEntryRepository(): TimeEntryRepository {
+        return TimeEntryRepositoryImpl()
+    }
+    
+    // 注意：TaskRepository, CheckInTaskRepository, PomodoroTaskRepository,
+    // TaskTagRepository, 和 TaskLogRepository 使用@Inject构造器直接注入，
+    // 不需要在这里显式提供
 } 

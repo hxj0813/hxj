@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
 import com.example.test2.presentation.timetracking.components.StatisticsView
@@ -62,11 +63,15 @@ import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.navigation.NavController
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TimeTrackingScreen(
-    viewModel: TimeTrackingViewModel = viewModel()
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    viewModel: TimeTrackingViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     

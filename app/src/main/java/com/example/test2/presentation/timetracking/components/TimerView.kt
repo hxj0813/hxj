@@ -284,8 +284,8 @@ private fun getDefaultTitleForCategory(category: TimeCategory): String {
         TimeCategory.WORK -> "工作任务"
         TimeCategory.STUDY -> "学习时间"
         TimeCategory.EXERCISE -> "锻炼时间"
-        TimeCategory.REST -> "休息时间"
-        TimeCategory.ENTERTAIN -> "娱乐时间"
+        TimeCategory.LEISURE -> "休闲时间"
+        TimeCategory.FOCUS -> "专注时间"
         TimeCategory.OTHER -> "其他活动"
     }
 }

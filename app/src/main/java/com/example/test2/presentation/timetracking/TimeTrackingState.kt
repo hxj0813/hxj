@@ -21,7 +21,19 @@ data class TimeTrackingState(
     val showEntryDialog: Boolean = false,
     val selectedEntry: TimeEntry? = null,
     val showFilterDialog: Boolean = false,
-    val statistics: TimeStatistics = TimeStatistics()
+    val statistics: TimeStatistics = TimeStatistics(),
+    
+    // 番茄钟相关状态
+    val currentTask: Task? = null,
+    val isRunning: Boolean = false,
+    val isPaused: Boolean = false,
+    val isBreakTime: Boolean = false,
+    val remainingTimeInSeconds: Int = 0,
+    val totalTimeInSeconds: Int = 0,
+    val currentSession: Int = 1,
+    val totalSessions: Int = 4,
+    val sessionCompleted: Boolean = false,
+    val sessionNotes: String = ""
 ) {
     /**
      * 获取指定日期的时间条目

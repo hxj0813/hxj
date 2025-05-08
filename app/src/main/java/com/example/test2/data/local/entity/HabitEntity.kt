@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.UUID
 import java.time.ZoneId
+import com.example.test2.data.local.entity.FrequencyType
 
 /**
  * 习惯类别枚举
@@ -25,22 +26,6 @@ enum class HabitCategory {
     companion object {
         fun fromInt(value: Int): HabitCategory {
             return values().getOrElse(value) { OTHER }
-        }
-    }
-}
-
-/**
- * 习惯频率类型枚举
- */
-enum class FrequencyType {
-    DAILY,       // 每日
-    WEEKLY,      // 每周特定天数
-    MONTHLY,     // 每月特定日期
-    CUSTOM;      // 自定义
-    
-    companion object {
-        fun fromInt(value: Int): FrequencyType {
-            return values().getOrElse(value) { DAILY }
         }
     }
 }

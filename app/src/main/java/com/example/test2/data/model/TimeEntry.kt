@@ -10,8 +10,8 @@ enum class TimeCategory {
     WORK,       // 工作
     STUDY,      // 学习
     EXERCISE,   // 锻炼
-    REST,       // 休息
-    ENTERTAIN,  // 娱乐
+    LEISURE,    // 休闲
+    FOCUS,      // 番茄钟专注时间类别
     OTHER       // 其他
 }
 

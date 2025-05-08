@@ -46,25 +46,22 @@ enum class TaskStatus {
  * 任务类型枚举
  */
 enum class TaskType {
-    NORMAL,      // 普通任务
     CHECK_IN,    // 打卡任务
     POMODORO;    // 番茄钟任务
     
     companion object {
         fun fromInt(value: Int): TaskType {
             return when (value) {
-                0 -> NORMAL
-                1 -> CHECK_IN
-                2 -> POMODORO
-                else -> NORMAL
+                0 -> CHECK_IN
+                1 -> POMODORO
+                else -> CHECK_IN
             }
         }
         
         fun toInt(type: TaskType): Int {
             return when (type) {
-                NORMAL -> 0
-                CHECK_IN -> 1
-                POMODORO -> 2
+                CHECK_IN -> 0
+                POMODORO -> 1
             }
         }
     }
@@ -155,7 +152,8 @@ data class CheckInSettings(
     val bestStreak: Int = 0,  // 最佳连续打卡天数
     val completedToday: Int = 0,  // 今日已完成次数
     val completedThisWeek: Int = 0,  // 本周已完成天数
-    val lastCheckInDate: Date? = null // 最近一次打卡日期
+    val lastCheckInDate: Date? = null, // 最近一次打卡日期
+    val totalCompletions: Int = 0  // 总打卡次数
 )
 
 /**
@@ -197,7 +195,7 @@ data class Task(
     val id: Long = UUID.randomUUID().mostSignificantBits and Long.MAX_VALUE,
     val title: String,
     val description: String? = null,
-    val type: TaskType = TaskType.NORMAL,
+    val type: TaskType = TaskType.CHECK_IN,
     val priority: TaskPriority = TaskPriority.MEDIUM,
     val dueDate: Date? = null,
     val goalId: Long? = null,
@@ -265,7 +263,6 @@ data class Task(
      */
     fun getTypeDescription(): String {
         return when (type) {
-            TaskType.NORMAL -> "普通任务"
             TaskType.CHECK_IN -> "打卡任务"
             TaskType.POMODORO -> "番茄钟任务"
         }

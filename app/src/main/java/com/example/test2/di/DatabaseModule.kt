@@ -9,6 +9,11 @@ import com.example.test2.data.local.dao.HabitDao
 import com.example.test2.data.local.dao.HabitLogDao
 import com.example.test2.data.local.dao.NoteDao
 import com.example.test2.data.local.dao.UserBadgeDao
+import com.example.test2.data.local.dao.TaskDao
+import com.example.test2.data.local.dao.CheckInTaskDao
+import com.example.test2.data.local.dao.PomodoroTaskDao
+import com.example.test2.data.local.dao.TaskTagDao
+import com.example.test2.data.local.dao.TaskLogDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -85,6 +90,36 @@ object DatabaseModule {
     @Singleton
     fun provideUserBadgeDao(database: AppDatabase): UserBadgeDao {
         return database.userBadgeDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTaskDao(appDatabase: AppDatabase): TaskDao {
+        return appDatabase.taskDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCheckInTaskDao(appDatabase: AppDatabase): CheckInTaskDao {
+        return appDatabase.checkInTaskDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun providePomodoroTaskDao(appDatabase: AppDatabase): PomodoroTaskDao {
+        return appDatabase.pomodoroTaskDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTaskTagDao(appDatabase: AppDatabase): TaskTagDao {
+        return appDatabase.taskTagDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTaskLogDao(appDatabase: AppDatabase): TaskLogDao {
+        return appDatabase.taskLogDao()
     }
     
     // 随着应用扩展，可以在此添加更多DAO的Provider方法
