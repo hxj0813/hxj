@@ -89,8 +89,34 @@ class NoteRepositoryImpl @Inject constructor(
     
     override suspend fun updateNote(note: HabitNote): Boolean {
         val now = Date()
-        val entity = NoteEntity.fromHabitNote(note.copy(updatedAt = now))
-        return noteDao.updateNote(entity) > 0
+        try {
+            android.util.Log.d("NoteRepository", "更新笔记 ID: ${note.id}, 包含 ${note.images.size} 张图片")
+            
+            // 首先尝试获取笔记
+            val existingNote = noteDao.getNoteById(note.id)
+            android.util.Log.d("NoteRepository", "数据库中是否存在笔记: ${existingNote != null}")
+            
+            // 准备要更新的实体
+            val entity = NoteEntity.fromHabitNote(note.copy(updatedAt = now))
+            android.util.Log.d("NoteRepository", "转换后的实体 imagesJson 长度: ${entity.imagesJson.length}")
+            
+            // 尝试更新
+            var result = noteDao.updateNote(entity) > 0
+            android.util.Log.d("NoteRepository", "更新结果: $result")
+            
+            // 如果更新失败（可能是因为记录不存在），尝试插入
+            if (!result) {
+                android.util.Log.d("NoteRepository", "更新失败，尝试插入笔记")
+                val insertResult = noteDao.insertNote(entity)
+                result = insertResult > 0
+                android.util.Log.d("NoteRepository", "插入结果: $result (ID: $insertResult)")
+            }
+            
+            return result
+        } catch (e: Exception) {
+            android.util.Log.e("NoteRepository", "更新笔记时出错: ${e.message}", e)
+            return false
+        }
     }
     
     override suspend fun updateNoteMood(noteId: String, mood: NoteMood): Boolean {

@@ -1,11 +1,15 @@
 package com.example.test2.presentation.habits
 
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteTag
+import com.example.test2.data.model.NoteImage
 import com.example.test2.domain.usecase.NoteUseCases
+import com.example.test2.util.NoteImageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +29,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class NotesViewModel @Inject constructor(
-    private val noteUseCases: NoteUseCases
+    private val noteUseCases: NoteUseCases,
+    private val imageManager: NoteImageManager
 ) : ViewModel() {
 
     // 状态
@@ -60,6 +65,10 @@ class NotesViewModel @Inject constructor(
             is NotesEvent.ShowNoteEditor -> showNoteEditor()
             is NotesEvent.ShowEditNoteEditor -> showEditNoteEditor(event.note)
             is NotesEvent.CloseNoteEditor -> closeNoteEditor()
+            is NotesEvent.AddImageToNote -> addImageToNote(event.uri)
+            is NotesEvent.RemoveImageFromNote -> removeImageFromNote(event.image)
+            is NotesEvent.ViewImage -> viewImage(event.image)
+            is NotesEvent.CloseImageViewer -> closeImageViewer()
         }
     }
 
@@ -222,7 +231,7 @@ class NotesViewModel @Inject constructor(
                             isLoading = false,
                             currentFilter = when(mood) {
                                 NoteMood.HAPPY, NoteMood.VERY_HAPPY -> NotesState.Filter.MOOD_HAPPY
-                                NoteMood.SAD, NoteMood.FRUSTRATED -> NotesState.Filter.MOOD_SAD
+                                NoteMood.SAD, NoteMood.VERY_SAD, NoteMood.FRUSTRATED -> NotesState.Filter.MOOD_SAD
                                 NoteMood.NEUTRAL -> NotesState.Filter.MOOD_NEUTRAL
                                 NoteMood.TIRED -> NotesState.Filter.MOOD_TIRED
                             }
@@ -299,62 +308,294 @@ class NotesViewModel @Inject constructor(
     }
 
     /**
-     * 保存新笔记
+     * 添加图片到笔记
+     */
+    private fun addImageToNote(uri: Uri) {
+        viewModelScope.launch {
+            // 设置图片处理状态
+            _state.update { it.copy(isImageProcessing = true) }
+            
+            try {
+                Log.d("NotesViewModel", "开始添加图片: $uri")
+                
+                // 保存图片到本地文件系统
+                val savedUri = imageManager.saveImageFromUri(uri)
+                Log.d("NotesViewModel", "图片已保存到: $savedUri")
+                
+                // 创建图片对象
+                val newImage = NoteImage(
+                    id = UUID.randomUUID().toString(),
+                    uri = savedUri,
+                    description = "",
+                    createdAt = Date()
+                )
+                
+                // 更新当前编辑中的笔记
+                val currentNote = _state.value.editingNote
+                if (currentNote != null) {
+                    // 确保不超过10张图片
+                    if (currentNote.images.size < 10) {
+                        val updatedImages = currentNote.images + newImage
+                        val updatedNote = currentNote.copy(images = updatedImages)
+                        
+                        Log.d("NotesViewModel", "添加图片后，笔记 ${updatedNote.id} 现在有 ${updatedImages.size} 张图片")
+                        
+                        _state.update { 
+                            it.copy(
+                                editingNote = updatedNote,
+                                isImageProcessing = false
+                            ) 
+                        }
+                    } else {
+                        _state.update { 
+                            it.copy(
+                                error = "最多只能添加10张图片",
+                                isImageProcessing = false
+                            ) 
+                        }
+                    }
+                } else {
+                    _state.update { it.copy(isImageProcessing = false) }
+                }
+            } catch (e: Exception) {
+                Log.e("NotesViewModel", "添加图片失败: ${e.message}", e)
+                _state.update { 
+                    it.copy(
+                        error = "添加图片失败: ${e.message}",
+                        isImageProcessing = false
+                    ) 
+                }
+            }
+        }
+    }
+    
+    /**
+     * 从笔记中移除图片
+     */
+    private fun removeImageFromNote(image: NoteImage) {
+        viewModelScope.launch {
+            try {
+                Log.d("NotesViewModel", "准备移除图片 ID: ${image.id}")
+                
+                // 删除文件
+                imageManager.deleteImage(image.uri)
+                Log.d("NotesViewModel", "图片文件已删除: ${image.uri}")
+                
+                // 更新状态
+                val currentNote = _state.value.editingNote
+                if (currentNote != null) {
+                    val updatedImages = currentNote.images.filter { it.id != image.id }
+                    val updatedNote = currentNote.copy(images = updatedImages)
+                    
+                    Log.d("NotesViewModel", "移除图片后，笔记 ${updatedNote.id} 还有 ${updatedImages.size} 张图片")
+                    
+                    _state.update { 
+                        it.copy(editingNote = updatedNote) 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("NotesViewModel", "删除图片失败: ${e.message}", e)
+                _state.update { 
+                    it.copy(error = "删除图片失败: ${e.message}") 
+                }
+            }
+        }
+    }
+    
+    /**
+     * 查看图片
+     */
+    private fun viewImage(image: NoteImage) {
+        _state.update { 
+            it.copy(
+                viewingImage = image,
+                showImageViewer = true
+            ) 
+        }
+    }
+    
+    /**
+     * 关闭图片查看器
+     */
+    private fun closeImageViewer() {
+        _state.update { 
+            it.copy(
+                viewingImage = null,
+                showImageViewer = false
+            ) 
+        }
+    }
+    
+    /**
+     * 清理未使用的图片
+     */
+    private fun cleanupUnusedImages() {
+        viewModelScope.launch {
+            try {
+                // 收集所有笔记中使用的图片URI
+                val usedImageUris = _state.value.notes
+                    .flatMap { it.images }
+                    .map { it.uri }
+                
+                // 清理未使用的图片
+                val cleanedCount = imageManager.cleanupUnusedImages(usedImageUris)
+                
+                if (cleanedCount > 0) {
+                    // 可选：记录日志或通知用户
+                }
+            } catch (e: Exception) {
+                // 忽略清理错误
+            }
+        }
+    }
+    
+    /**
+     * 保存笔记
      */
     private fun saveNote(note: HabitNote) {
         viewModelScope.launch {
-            val result = noteUseCases.saveNote(note)
-            if (result > 0) {
-                loadNotes()
-                closeNoteEditor()
-            } else {
-                _state.update { it.copy(error = "保存笔记失败") }
+            _state.update { it.copy(isSaving = true) }
+            
+            try {
+                Log.d("NotesViewModel", "Saving new note with title: ${note.title}")
+                Log.d("NotesViewModel", "Note has ${note.images.size} images")
+                
+                val result = noteUseCases.saveNote(note)
+                Log.d("NotesViewModel", "Save result: $result")
+                
+                if (result > 0) {
+                    _state.update { 
+                        it.copy(
+                            showNoteEditor = false,
+                            editingNote = null,
+                            isSaving = false
+                        ) 
+                    }
+                    
+                    // 重新加载笔记列表
+                    loadNotes()
+                    
+                    // 清理未使用的图片
+                    cleanupUnusedImages()
+                } else {
+                    _state.update { 
+                        it.copy(
+                            error = "保存笔记失败",
+                            isSaving = false
+                        ) 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("NotesViewModel", "Error saving note: ${e.message}", e)
+                _state.update { 
+                    it.copy(
+                        error = "保存笔记失败: ${e.message}",
+                        isSaving = false
+                    ) 
+                }
             }
         }
     }
-
+    
     /**
-     * 更新现有笔记
+     * 更新笔记
      */
     private fun updateNote(note: HabitNote) {
         viewModelScope.launch {
-            val success = noteUseCases.updateNote(note)
-            if (success) {
-                loadNotes()
-                closeNoteEditor()
-            } else {
-                _state.update { it.copy(error = "更新笔记失败") }
+            _state.update { it.copy(isSaving = true) }
+            
+            try {
+                // 添加详细日志
+                Log.d("NotesViewModel", "开始更新笔记 ID: ${note.id}")
+                Log.d("NotesViewModel", "标题: ${note.title}")
+                Log.d("NotesViewModel", "内容: ${note.content.take(50)}...")
+                Log.d("NotesViewModel", "图片数量: ${note.images.size}")
+                
+                // 获取当前编辑中的笔记
+                val currentEditingNote = _state.value.editingNote
+                
+                // 重要：确保使用ViewModel中的最新图片列表
+                val updatedNote = if (currentEditingNote != null && note.id == currentEditingNote.id) {
+                    // 如果images字段在传入的note中丢失，使用当前编辑笔记的images
+                    if (note.images.isEmpty() && currentEditingNote.images.isNotEmpty()) {
+                        Log.d("NotesViewModel", "使用ViewModel中的图片列表: ${currentEditingNote.images.size}张")
+                        note.copy(images = currentEditingNote.images)
+                    } else {
+                        note
+                    }
+                } else {
+                    note
+                }
+                
+                Log.d("NotesViewModel", "最终更新的笔记图片数量: ${updatedNote.images.size}")
+                
+                // 调用Repository更新笔记
+                val result = noteUseCases.updateNote(updatedNote)
+                Log.d("NotesViewModel", "更新结果: $result")
+                
+                if (result) {
+                    _state.update { 
+                        it.copy(
+                            showNoteEditor = false,
+                            editingNote = null,
+                            isSaving = false
+                        ) 
+                    }
+                    
+                    // 如果正在查看此笔记的详情，更新显示
+                    if (_state.value.showNoteDetail && _state.value.selectedNote?.id == note.id) {
+                        _state.update { it.copy(selectedNote = updatedNote) }
+                    }
+                    
+                    // 重新加载笔记列表
+                    loadNotes()
+                    
+                    // 清理未使用的图片
+                    cleanupUnusedImages()
+                } else {
+                    _state.update { 
+                        it.copy(
+                            error = "笔记更新失败",
+                            isSaving = false
+                        ) 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("NotesViewModel", "更新笔记失败: ${e.message}", e)
+                _state.update { 
+                    it.copy(
+                        error = "更新笔记失败: ${e.message}",
+                        isSaving = false
+                    ) 
+                }
             }
         }
     }
-
+    
     /**
      * 删除笔记
      */
     private fun deleteNote(noteId: String) {
         viewModelScope.launch {
-            val success = noteUseCases.deleteNote(noteId)
-            if (success) {
+            try {
+                // 获取笔记信息
+                val noteToDelete = _state.value.notes.find { it.id == noteId }
+                
+                // 删除笔记
+                noteUseCases.deleteNote(noteId)
+                
+                // 关闭详情视图
+                if (_state.value.showNoteDetail && _state.value.selectedNote?.id == noteId) {
+                    _state.update { it.copy(showNoteDetail = false, selectedNote = null) }
+                }
+                
+                // 重新加载笔记列表
                 loadNotes()
-                closeNoteDetail()
-            } else {
-                _state.update { it.copy(error = "删除笔记失败") }
-            }
-        }
-    }
-
-    /**
-     * 顶置/取消顶置笔记
-     */
-    private fun toggleNotePinStatus(noteId: String, isPinned: Boolean) {
-        viewModelScope.launch {
-            val success = noteUseCases.toggleNotePinStatus(noteId, isPinned)
-            if (success) {
-                loadNotes()
-                // 同时更新顶置笔记缓存
-                loadPinnedNotes()
-            } else {
-                _state.update { it.copy(error = "修改笔记顶置状态失败") }
+                
+                // 清理未使用的图片
+                cleanupUnusedImages()
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "删除笔记失败: ${e.message}") }
             }
         }
     }
@@ -384,13 +625,28 @@ class NotesViewModel @Inject constructor(
     }
 
     /**
-     * 显示笔记编辑器（新建）
+     * 显示笔记编辑器
      */
     private fun showNoteEditor() {
+        val habitId = _state.value.habitId ?: ""
+        
+        // 创建一个新的空白笔记
+        val newNote = HabitNote(
+            id = UUID.randomUUID().toString(),
+            habitId = habitId,
+            title = "",
+            content = "",
+            mood = NoteMood.NEUTRAL,
+            tags = emptyList(),
+            images = emptyList(),
+            createdAt = Date(),
+            updatedAt = Date()
+        )
+        
         _state.update { 
             it.copy(
                 showNoteEditor = true,
-                editingNote = null
+                editingNote = newNote
             ) 
         }
     }
@@ -473,7 +729,7 @@ class NotesViewModel @Inject constructor(
             }
             NotesState.Filter.MOOD_SAD -> {
                 notes.filter { 
-                    it.mood == NoteMood.SAD || it.mood == NoteMood.FRUSTRATED 
+                    it.mood == NoteMood.SAD || it.mood == NoteMood.VERY_SAD || it.mood == NoteMood.FRUSTRATED 
                 }
             }
             NotesState.Filter.MOOD_NEUTRAL -> {
@@ -487,5 +743,27 @@ class NotesViewModel @Inject constructor(
                 notes
             }
         }
+    }
+
+    /**
+     * 顶置/取消顶置笔记
+     */
+    private fun toggleNotePinStatus(noteId: String, isPinned: Boolean) {
+        viewModelScope.launch {
+            val success = noteUseCases.toggleNotePinStatus(noteId, isPinned)
+            if (success) {
+                loadNotes()
+                // 同时更新顶置笔记缓存
+                loadPinnedNotes()
+            } else {
+                _state.update { it.copy(error = "修改笔记顶置状态失败") }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // 清理未使用的图片
+        cleanupUnusedImages()
     }
 } 

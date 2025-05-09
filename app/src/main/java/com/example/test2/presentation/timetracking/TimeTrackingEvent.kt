@@ -6,17 +6,18 @@ import java.util.Date
 
 /**
  * 时间追踪事件
+ * 封装了用户交互和系统事件
  */
 sealed class TimeTrackingEvent {
     /**
      * 加载时间条目
      */
-    data object LoadTimeEntries : TimeTrackingEvent()
+    object LoadTimeEntries : TimeTrackingEvent()
     
     /**
      * 加载任务
      */
-    data object LoadTasks : TimeTrackingEvent()
+    object LoadTasks : TimeTrackingEvent()
     
     /**
      * 选择日期
@@ -24,7 +25,7 @@ sealed class TimeTrackingEvent {
     data class SelectDate(val date: Date) : TimeTrackingEvent()
     
     /**
-     * 筛选分类
+     * 按分类筛选
      */
     data class FilterCategory(val category: TimeCategory?) : TimeTrackingEvent()
     
@@ -34,12 +35,12 @@ sealed class TimeTrackingEvent {
     data class SetDateRange(val startDate: Date, val endDate: Date) : TimeTrackingEvent()
     
     /**
-     * 开始新的时间条目
+     * 开始时间条目
      */
     data class StartTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
     
     /**
-     * 停止正在进行的时间条目
+     * 停止时间条目
      */
     data class StopTimeEntry(val endTime: Date = Date()) : TimeTrackingEvent()
     
@@ -66,7 +67,7 @@ sealed class TimeTrackingEvent {
     /**
      * 显示添加时间条目对话框
      */
-    data object ShowAddEntryDialog : TimeTrackingEvent()
+    object ShowAddEntryDialog : TimeTrackingEvent()
     
     /**
      * 显示编辑时间条目对话框
@@ -76,12 +77,12 @@ sealed class TimeTrackingEvent {
     /**
      * 显示筛选对话框
      */
-    data object ShowFilterDialog : TimeTrackingEvent()
+    object ShowFilterDialog : TimeTrackingEvent()
     
     /**
      * 关闭对话框
      */
-    data object DismissDialog : TimeTrackingEvent()
+    object DismissDialog : TimeTrackingEvent()
     
     /**
      * 计算统计数据

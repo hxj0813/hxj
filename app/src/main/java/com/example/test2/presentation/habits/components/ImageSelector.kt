@@ -37,6 +37,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,12 +53,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.example.test2.data.model.NoteImage
+import android.util.Log
 import kotlin.random.Random
 
 /**
@@ -66,17 +71,24 @@ import kotlin.random.Random
  * @param images 已选择的图片列表
  * @param onAddImage 添加图片回调
  * @param onRemoveImage 移除图片回调
+ * @param onImageClick 点击图片回调
  * @param modifier Modifier修饰符
  */
 @Composable
-fun ImageSelector(
+fun ImageSelectorGrid(
     images: List<NoteImage>,
     onAddImage: () -> Unit,
     onRemoveImage: (NoteImage) -> Unit,
+    onImageClick: (NoteImage) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showAddImageHint by remember { mutableStateOf(false) }
-    var expandedImage by remember { mutableStateOf<NoteImage?>(null) }
+    
+    // 记录图片加载情况的日志
+    Log.d("ImageSelector", "加载图片列表，共 ${images.size} 张图片")
+    images.forEachIndexed { index, image ->
+        Log.d("ImageSelector", "图片 $index: ID=${image.id}, URI=${image.uri}")
+    }
     
     Column(
         modifier = modifier.fillMaxWidth()
@@ -85,7 +97,7 @@ fun ImageSelector(
         if (images.isNotEmpty()) {
             ImageGrid(
                 images = images,
-                onImageClick = { expandedImage = it },
+                onImageClick = onImageClick,
                 onRemoveImage = onRemoveImage
             )
         }
@@ -95,14 +107,6 @@ fun ImageSelector(
             isExpanded = showAddImageHint,
             onExpandChange = { showAddImageHint = it },
             onAddClick = onAddImage
-        )
-    }
-    
-    // 图片预览对话框
-    if (expandedImage != null) {
-        ImagePreviewDialog(
-            image = expandedImage!!,
-            onDismiss = { expandedImage = null }
         )
     }
 }
@@ -134,58 +138,6 @@ fun ImageGrid(
                 image = image,
                 onClick = { onImageClick(image) },
                 onRemove = { onRemoveImage(image) }
-            )
-        }
-    }
-}
-
-/**
- * 图片缩略图组件
- */
-@Composable
-fun ImageThumbnail(
-    image: NoteImage,
-    onClick: () -> Unit,
-    onRemove: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-    ) {
-        // 模拟图片加载 - 在实际应用中使用Coil或Glide加载图片
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(getRandomColor(image.id))
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Image,
-                contentDescription = "图片",
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .size(32.dp)
-                    .align(Alignment.Center)
-            )
-        }
-        
-        // 删除按钮
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(4.dp)
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.6f))
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "删除图片",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
             )
         }
     }
@@ -364,7 +316,7 @@ fun ImagePreviewDialog(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(color = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -380,7 +332,7 @@ fun ImagePreviewDialog(
                         .fillMaxWidth()
                         .height(300.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(getRandomColor(image.id))
+                        .background(color = getRandomColor(image.id))
                 ) {
                     // 模拟图片
                     Icon(

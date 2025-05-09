@@ -345,4 +345,65 @@ fun CategoryChip(
             )
         )
     }
+}
+
+/**
+ * 分类占比展示
+ */
+@Composable
+private fun CategoryBreakdown(
+    categoryPercentages: Map<String, Float>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "分类占比",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
+        
+        // 简单的彩色条形图
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(16.dp)
+                .clip(RoundedCornerShape(8.dp))
+        ) {
+            categoryPercentages.forEach { (category, percentage) ->
+                Box(
+                    modifier = Modifier
+                        .weight(percentage)
+                        .fillMaxSize()
+                        .background(TimeTrackingUtils.getCategoryColor(category))
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // 图例
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            categoryPercentages.forEach { (category, percentage) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(TimeTrackingUtils.getCategoryColor(category), CircleShape)
+                    )
+                    
+                    Text(
+                        text = "$category ${percentage.toInt()}%",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
 } 

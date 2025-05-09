@@ -65,7 +65,7 @@ import com.example.test2.data.model.NoteTag
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TagSelector(
+fun NoteTagSelector(
     selectedTags: List<NoteTag>,
     onTagsChanged: (List<NoteTag>) -> Unit,
     modifier: Modifier = Modifier

@@ -10,7 +10,8 @@ enum class HabitFrequency {
     DAILY,      // 每天
     WEEKDAYS,   // 工作日
     WEEKLY,     // 每周
-    MONTHLY     // 每月
+    MONTHLY,    // 每月
+    CUSTOM      // 自定义
 }
 
 /**
@@ -28,51 +29,65 @@ enum class HabitCategory {
 
 /**
  * 习惯数据模型
+ *
+ * @property id 习惯ID
+ * @property name 习惯名称
+ * @property description 习惯描述
+ * @property color 习惯颜色
+ * @property icon 习惯图标
+ * @property frequency 频率，例如每天、每周几次等
+ * @property reminderTime 提醒时间
+ * @property startDate 开始日期
+ * @property currentStreak 当前连续天数
+ * @property bestStreak 最佳连续天数
+ * @property totalCompletions 总完成次数
+ * @property completedToday 今天是否已完成
+ * @property lastCompletedDate 最后完成日期
+ * @property createdAt 创建时间
+ * @property updatedAt 更新时间
  */
 data class Habit(
-    val id: String = UUID.randomUUID().toString(),
-    val title: String,                              // 习惯标题
-    val description: String? = null,                // 习惯描述
-    val category: HabitCategory = HabitCategory.OTHER, // 习惯类别
-    val frequency: HabitFrequency = HabitFrequency.DAILY, // 打卡频率
-    val targetDays: Int = 21,                       // 目标天数（默认21天形成习惯）
-    val isRemindable: Boolean = false,              // 是否需要提醒
-    val reminderTime: Date? = null,                 // 提醒时间
-    val startDate: Date = Date(),                   // 开始日期
-    val checkInRecords: List<Date> = emptyList(),   // 打卡记录
-    val color: Long = 0xFF4A90E2,                   // 习惯颜色（默认蓝色）
-    val icon: String = "default_habit",             // 习惯图标
-    val currentStreak: Int = 0,                     // 当前连续打卡天数
-    val bestStreak: Int = 0,                        // 最长连续打卡天数
-    val totalCheckIns: Int = 0,                     // 总打卡次数
-    val completionRate: Float = 0f,                 // 完成率
-    val notes: List<HabitNote> = emptyList(),       // 习惯笔记
-    val isArchived: Boolean = false,                // 是否归档
-    val createdAt: Date = Date(),                   // 创建时间
-    val updatedAt: Date = Date()                    // 更新时间
+    val id: String,
+    val name: String,
+    val description: String = "",
+    val color: Int = 0xFF4CAF50.toInt(), // 默认绿色
+    val icon: String? = null,
+    val frequency: HabitFrequency = HabitFrequency.DAILY,
+    val reminderTime: Date? = null,
+    val startDate: Date = Date(),
+    val currentStreak: Int = 0,
+    val bestStreak: Int = 0,
+    val totalCompletions: Int = 0,
+    val completedToday: Boolean = false,
+    val lastCompletedDate: Date? = null,
+    val createdAt: Date = Date(),
+    val updatedAt: Date = Date()
 ) {
     /**
      * 今天是否已打卡
      */
     fun isCheckedInToday(): Boolean {
-        val today = Date()
-        return checkInRecords.any { record ->
-            isSameDay(record, today)
-        }
+        return completedToday
     }
     
     /**
      * 计算进度百分比
+     * 
+     * @param targetDays 目标天数，默认为21天习惯养成周期
+     * @return 完成百分比（0.0-1.0）
      */
-    fun calculateProgress(): Float {
-        return (totalCheckIns.toFloat() / targetDays).coerceIn(0f, 1f)
+    fun calculateProgress(targetDays: Int = 21): Float {
+        return (totalCompletions.toFloat() / targetDays).coerceIn(0f, 1f)
     }
     
     /**
      * 判断是否已完成目标天数
+     * 
+     * @param targetDays 目标天数，默认为21天习惯养成周期
+     * @return 是否完成目标
      */
-    fun isCompleted(): Boolean {
-        return totalCheckIns >= targetDays
+    fun isCompleted(targetDays: Int = 21): Boolean {
+        return totalCompletions >= targetDays
     }
     
     /**

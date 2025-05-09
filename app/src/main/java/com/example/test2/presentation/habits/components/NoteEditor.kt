@@ -1,6 +1,9 @@
 package com.example.test2.presentation.habits.components
 
 import android.content.res.Configuration
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,10 +26,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteMood
+import com.example.test2.data.model.NoteImage
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -74,6 +80,10 @@ import java.util.UUID
  * @param existingNote 现有笔记（如果是编辑模式）
  * @param onSave 保存回调
  * @param onCancel 取消回调
+ * @param onAddImage 添加图片回调
+ * @param onRemoveImage 删除图片回调
+ * @param onViewImage 查看图片回调
+ * @param isImageProcessing 是否正在处理图片
  * @param modifier Modifier修饰符
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,6 +93,10 @@ fun NoteEditor(
     existingNote: HabitNote? = null,
     onSave: (HabitNote) -> Unit,
     onCancel: () -> Unit,
+    onAddImage: (Uri) -> Unit = {},
+    onRemoveImage: (NoteImage) -> Unit = {},
+    onViewImage: (NoteImage) -> Unit = {},
+    isImageProcessing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // 状态管理
@@ -95,6 +109,20 @@ fun NoteEditor(
                 addAll(existingNote.tags)
             }
         }
+    }
+    
+    // 记住图片列表
+    val images = remember {
+        mutableStateListOf<NoteImage>().apply {
+            existingNote?.images?.let { addAll(it) }
+        }
+    }
+    
+    // 图片选择器
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { onAddImage(it) }
     }
     
     // 是否为编辑模式
@@ -116,6 +144,25 @@ fun NoteEditor(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "返回"
                         )
+                    }
+                },
+                actions = {
+                    // 添加图片按钮
+                    IconButton(
+                        onClick = { imagePicker.launch("image/*") },
+                        enabled = !isImageProcessing && existingNote?.images?.size ?: 0 < 10
+                    ) {
+                        if (isImageProcessing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.PhotoLibrary,
+                                contentDescription = "添加图片"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -183,7 +230,7 @@ fun NoteEditor(
             Spacer(modifier = Modifier.height(16.dp))
             
             // 标签选择器
-            TagSelector(
+            NoteTagSelector(
                 selectedTags = selectedTags.toList(),
                 onTagsChanged = { newTags ->
                     selectedTags.clear()
@@ -191,21 +238,50 @@ fun NoteEditor(
                 }
             )
             
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // 图片选择器
+            if (existingNote?.images?.isNotEmpty() == true || images.isNotEmpty()) {
+                // 显示图片列表 - 根据编辑状态选择合适的图片列表
+                ImageSelectorGrid(
+                    images = existingNote?.images ?: images.toList(),
+                    onAddImage = { imagePicker.launch("image/*") },
+                    onRemoveImage = onRemoveImage,
+                    onImageClick = onViewImage
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             
             // 保存按钮
             Button(
                 onClick = {
                     val note = if (isEditMode) {
-                        existingNote!!.copy(
+                        // 在编辑模式下，必须确保所有字段都正确复制
+                        
+                        // 记录图片信息
+                        existingNote!!.images.forEachIndexed { index, image ->
+                            android.util.Log.d("NoteEditor", "保存已有图片[$index]: ${image.uri}")
+                        }
+                        
+                        existingNote.copy(
                             title = title,
                             content = content,
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            images = emptyList(), // 不包含图片
+                            // 重要：保持原有图片列表不变
+                            images = existingNote.images,
+                            // 更新时间戳
                             updatedAt = LocalDateTime.now().toDate()
                         )
                     } else {
+                        // 创建全新的笔记
+                        
+                        // 记录图片信息
+                        images.forEachIndexed { index, image ->
+                            android.util.Log.d("NoteEditor", "保存新图片[$index]: ${image.uri}")
+                        }
+                        
                         HabitNote(
                             id = UUID.randomUUID().toString(),
                             habitId = habitId,
@@ -213,11 +289,17 @@ fun NoteEditor(
                             content = content,
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            images = emptyList(), // 不包含图片
+                            images = images,
                             createdAt = LocalDateTime.now().toDate(),
                             updatedAt = LocalDateTime.now().toDate()
                         )
                     }
+                    
+                    // 调试信息
+                    android.util.Log.d("NoteEditor", "保存笔记，ID: ${note.id}, 标题: ${note.title}")
+                    android.util.Log.d("NoteEditor", "笔记图片数量: ${note.images.size}")
+                    
+                    // 保存笔记
                     onSave(note)
                 },
                 enabled = title.isNotBlank() && content.isNotBlank(),

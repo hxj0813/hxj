@@ -288,6 +288,7 @@ fun getMoodText(mood: NoteMood): String {
         NoteMood.TIRED -> "疲惫"
         NoteMood.FRUSTRATED -> "挫折"
         NoteMood.SAD -> "难过"
+        NoteMood.VERY_SAD -> "非常难过"
     }
 }
 
@@ -303,6 +304,7 @@ fun getMoodEmoji(mood: NoteMood): String {
         NoteMood.TIRED -> "😴"
         NoteMood.FRUSTRATED -> "😤"
         NoteMood.SAD -> "😔"
+        NoteMood.VERY_SAD -> "😢"
     }
 }
 
@@ -318,5 +320,6 @@ fun getMoodColor(mood: NoteMood): Color {
         NoteMood.TIRED -> Color(0xFF9E9E9E)       // 灰色
         NoteMood.FRUSTRATED -> Color(0xFFFF9800)  // 橙色
         NoteMood.SAD -> Color(0xFF9C27B0)         // 紫色
+        NoteMood.VERY_SAD ->Color(0xFF3F51B5)     //靛蓝色
     }
 } 

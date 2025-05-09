@@ -2,6 +2,7 @@ package com.example.test2.presentation.habits
 
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteMood
+import com.example.test2.data.model.NoteImage
 
 /**
  * 笔记管理状态类
@@ -12,12 +13,20 @@ data class NotesState(
     val currentFilter: Filter = Filter.ALL,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
+    val isSaving: Boolean = false,
+    val isImageProcessing: Boolean = false,
     val error: String? = null,
     val selectedNote: HabitNote? = null,
     val showNoteDetail: Boolean = false,
     val showNoteEditor: Boolean = false,
     val editingNote: HabitNote? = null,
-    val habitId: String? = null
+    val habitId: String? = null,
+    val viewingImage: NoteImage? = null, // 当前查看的图片
+    val showImageViewer: Boolean = false, // 是否显示图片查看器
+    val currentEditingNote: HabitNote? = null, // 当前正在编辑的笔记
+    val tempImages: List<NoteImage> = emptyList(), // 临时图片列表
+    val currentViewingImage: NoteImage? = null, // 当前正在查看的图片
+    val isImageViewerVisible: Boolean = false // 图片查看器是否可见
 ) {
     /**
      * 笔记过滤器
@@ -39,6 +48,12 @@ data class NotesState(
      */
     val showEmptyState: Boolean 
         get() = !isLoading && filteredNotes.isEmpty()
+    
+    /**
+     * 判断是否正在处理过程中
+     */
+    val isProcessing: Boolean
+        get() = isLoading || isSaving || isImageProcessing
     
     companion object {
         /**

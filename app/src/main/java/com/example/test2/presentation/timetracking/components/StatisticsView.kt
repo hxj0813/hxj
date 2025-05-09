@@ -40,13 +40,14 @@ import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.presentation.timetracking.TimeTrackingState
 import com.example.test2.presentation.timetracking.TimeTrackingUtils
+import com.example.test2.presentation.timetracking.TimeStatistics
 
 /**
  * 时间统计视图，用于显示时间分配情况
  */
 @Composable
 fun StatisticsView(
-    statistics: TimeTrackingState.TimeStatistics,
+    statistics: TimeStatistics,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -74,7 +75,7 @@ fun StatisticsView(
             
             // 总时间统计
             TotalTimeStats(
-                totalHours = statistics.totalDuration / 3600.0,
+                totalHours = statistics.totalTrackedSeconds / 3600.0,
                 entriesCount = statistics.categoryBreakdown.values.sum().toInt() / 60
             )
             
@@ -169,7 +170,7 @@ fun StatBox(
  */
 @Composable
 fun PieChart(
-    categoryDurations: Map<TimeCategory, Long>,
+    categoryDurations: Map<String, Long>,
     modifier: Modifier = Modifier
 ) {
     // 计算总时间
@@ -199,12 +200,12 @@ fun PieChart(
     }
     
     // 提前计算所有分类的动画角度
-    val animatedSweepAngles = sortedCategories.associate { category ->
-        val sweepAngle = sweepAngles[category] ?: 0f
-        category to animateFloatAsState(
+    val animatedSweepAngles = sortedCategories.associate { categoryName ->
+        val sweepAngle = sweepAngles[categoryName] ?: 0f
+        categoryName to animateFloatAsState(
             targetValue = if (animationTriggered) sweepAngle else 0f,
             animationSpec = tween(durationMillis = 800, delayMillis = 100),
-            label = "SweepAngleAnimation${category.name}"
+            label = "SweepAngleAnimation${categoryName}"
         ).value
     }
     
@@ -224,13 +225,19 @@ fun PieChart(
             
             var startAngle = -90f // 从顶部开始
             
-            sortedCategories.forEach { category ->
-                val sweepAngle = sweepAngles[category] ?: 0f
+            sortedCategories.forEach { categoryName ->
+                val sweepAngle = sweepAngles[categoryName] ?: 0f
                 if (sweepAngle > 0) {
-                    val (color, _) = TimeTrackingUtils.getCategoryColors(category)
+                    // 获取分类颜色
+                    val color = try {
+                        val category = TimeCategory.valueOf(categoryName)
+                        TimeTrackingUtils.getCategoryColor(category)
+                    } catch (e: Exception) {
+                        Color.Gray // 默认颜色
+                    }
                     
                     // 使用预先计算的动画角度
-                    val animatedSweepAngle = animatedSweepAngles[category] ?: 0f
+                    val animatedSweepAngle = animatedSweepAngles[categoryName] ?: 0f
                     
                     // 绘制扇形
                     drawArc(
@@ -282,7 +289,7 @@ fun PieChart(
  */
 @Composable
 fun CategoryLegend(
-    categoryDurations: Map<TimeCategory, Long>,
+    categoryDurations: Map<String, Long>,
     modifier: Modifier = Modifier
 ) {
     val sortedEntries = remember(categoryDurations) {
@@ -292,8 +299,15 @@ fun CategoryLegend(
     }
     
     Column(modifier = modifier.fillMaxWidth()) {
-        sortedEntries.forEach { (category, duration) ->
-            val (color, _) = TimeTrackingUtils.getCategoryColors(category)
+        sortedEntries.forEach { (categoryName, duration) ->
+            // 获取分类颜色
+            val color = try {
+                val category = TimeCategory.valueOf(categoryName)
+                TimeTrackingUtils.getCategoryColor(category)
+            } catch (e: Exception) {
+                Color.Gray // 默认颜色
+            }
+            
             val percentage = (duration.toFloat() / categoryDurations.values.sum().toFloat()) * 100
             
             Row(
@@ -313,7 +327,7 @@ fun CategoryLegend(
                 
                 // 分类名称
                 Text(
-                    text = TimeTrackingUtils.getCategoryName(category),
+                    text = getCategoryDisplayName(categoryName),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -335,6 +349,18 @@ fun CategoryLegend(
                 )
             }
         }
+    }
+}
+
+/**
+ * 根据分类名获取显示名称
+ */
+private fun getCategoryDisplayName(categoryName: String): String {
+    return try {
+        val category = TimeCategory.valueOf(categoryName)
+        TimeTrackingUtils.getCategoryName(category)
+    } catch (e: Exception) {
+        categoryName // 如果无法解析，则直接返回原名称
     }
 }
 

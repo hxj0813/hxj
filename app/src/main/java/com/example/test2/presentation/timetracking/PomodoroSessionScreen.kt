@@ -199,7 +199,7 @@ fun PomodoroSessionScreen(
                     SessionCompletedDialog(
                         onDismiss = { viewModel.acknowledgeSessionCompleted() },
                         onSaveAndFinish = {
-                            viewModel.saveSession(it)
+                            viewModel.saveSession(it ?: "")
                             onFinish()
                         }
                     )

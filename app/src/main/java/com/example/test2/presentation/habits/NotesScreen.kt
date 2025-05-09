@@ -1,5 +1,8 @@
 package com.example.test2.presentation.habits
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,7 +23,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,12 +60,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteMood
+import com.example.test2.data.model.NoteImage
+import com.example.test2.presentation.habits.components.HabitSelector
+import com.example.test2.presentation.habits.components.ImageViewer
 import com.example.test2.presentation.habits.components.NoteCard
 import com.example.test2.presentation.habits.components.NoteDetail
 import com.example.test2.presentation.habits.components.NoteEditor
+import com.example.test2.presentation.habits.components.NoteFilterModal
+import com.example.test2.presentation.habits.components.NoteItem
+import com.example.test2.presentation.habits.components.NoteSearchBar
+import com.example.test2.presentation.habits.components.SearchTextField
 import com.example.test2.presentation.components.LoadingView
-import java.util.Date
-import java.util.Calendar
+import com.example.test2.presentation.habits.components.ImageViewer
 
 /**
  * 笔记屏幕
@@ -218,7 +229,22 @@ fun NotesScreen(
                         viewModel.onEvent(NotesEvent.SaveNote(note))
                     }
                 },
-                onCancel = { viewModel.onEvent(NotesEvent.CloseNoteEditor) }
+                onCancel = { viewModel.onEvent(NotesEvent.CloseNoteEditor) },
+                onAddImage = { uri -> viewModel.onEvent(NotesEvent.AddImageToNote(uri)) },
+                onRemoveImage = { image -> viewModel.onEvent(NotesEvent.RemoveImageFromNote(image)) },
+                onViewImage = { image -> viewModel.onEvent(NotesEvent.ViewImage(image)) },
+                isImageProcessing = state.isImageProcessing
+            )
+        }
+    }
+    
+    // 图片查看器
+    if (state.showImageViewer) {
+        val image = state.viewingImage
+        if (image != null) {
+            ImageViewer(
+                image = image,
+                onDismiss = { viewModel.onEvent(NotesEvent.CloseImageViewer) }
             )
         }
     }

@@ -1,10 +1,12 @@
 package com.example.test2.di
 
+import com.example.test2.data.local.AppDatabase
 import com.example.test2.data.local.dao.GoalDao
 import com.example.test2.data.local.dao.NoteDao
 import com.example.test2.data.repository.GoalRepository
 import com.example.test2.data.repository.NoteRepository
 import com.example.test2.data.repository.TimeEntryRepository
+import com.example.test2.data.repository.TimeTrackingRepository
 import com.example.test2.data.repository.impl.GoalRepositoryImpl
 import com.example.test2.data.repository.impl.NoteRepositoryImpl
 import com.example.test2.data.repository.impl.TimeEntryRepositoryImpl
@@ -50,6 +52,14 @@ object RepositoryModule {
     @Singleton
     fun provideTimeEntryRepository(): TimeEntryRepository {
         return TimeEntryRepositoryImpl()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTimeTrackingRepository(db: AppDatabase): TimeTrackingRepository {
+        return TimeTrackingRepository(
+            timeTrackingDao = db.timeTrackingDao()
+        )
     }
     
     // 注意：TaskRepository, CheckInTaskRepository, PomodoroTaskRepository,

@@ -1,8 +1,10 @@
 package com.example.test2.presentation.habits
 
+import android.net.Uri
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteTag
+import com.example.test2.data.model.NoteImage
 
 /**
  * 笔记管理事件
@@ -77,4 +79,24 @@ sealed class NotesEvent {
      * 关闭笔记编辑器
      */
     object CloseNoteEditor : NotesEvent()
+    
+    /**
+     * 添加图片到笔记
+     */
+    data class AddImageToNote(val uri: Uri) : NotesEvent()
+    
+    /**
+     * 从笔记中移除图片
+     */
+    data class RemoveImageFromNote(val image: NoteImage) : NotesEvent()
+    
+    /**
+     * 查看图片
+     */
+    data class ViewImage(val image: NoteImage) : NotesEvent()
+    
+    /**
+     * 关闭图片查看器
+     */
+    object CloseImageViewer : NotesEvent()
 } 

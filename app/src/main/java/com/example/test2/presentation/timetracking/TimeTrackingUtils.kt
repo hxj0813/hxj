@@ -26,6 +26,32 @@ object TimeTrackingUtils {
     }
     
     /**
+     * 获取分类的主颜色
+     * 
+     * @param category 时间分类
+     * @return 主颜色
+     */
+    fun getCategoryColor(category: TimeCategory): Color {
+        return getCategoryColors(category).first
+    }
+    
+    /**
+     * 根据分类名称获取颜色
+     * 
+     * @param categoryName 分类名称
+     * @return 主颜色
+     */
+    fun getCategoryColor(categoryName: String): Color {
+        return try {
+            val category = TimeCategory.valueOf(categoryName.uppercase())
+            getCategoryColor(category)
+        } catch (e: IllegalArgumentException) {
+            // 默认返回灰色
+            Color(0xFF9E9E9E)
+        }
+    }
+    
+    /**
      * 获取分类的显示名称
      * 
      * @param category 时间分类

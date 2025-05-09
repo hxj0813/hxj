@@ -1,5 +1,7 @@
 package com.example.test2.presentation.timetracking
 
+import com.example.test2.data.local.entity.timetracking.TimeGoalEntity
+import com.example.test2.data.local.entity.timetracking.TimeTagEntity
 import com.example.test2.data.model.Task
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
@@ -9,17 +11,24 @@ import java.util.Date
  * 时间追踪状态
  */
 data class TimeTrackingState(
+    // 核心数据
     val timeEntries: List<TimeEntry> = emptyList(),
     val filteredEntries: List<TimeEntry> = emptyList(),
     val allTasks: List<Task> = emptyList(),
     val ongoingEntry: TimeEntry? = null,
+    val selectedEntry: TimeEntry? = null,
+    val allTags: List<TimeTagEntity> = emptyList(),
+    val activeGoals: List<TimeGoalEntity> = emptyList(),
+    
+    // 筛选条件
     val selectedCategory: TimeCategory? = null,
     val selectedDate: Date = Date(),
     val dateRange: Pair<Date, Date>? = null,
+    
+    // UI状态
     val isLoading: Boolean = true,
     val error: String? = null,
     val showEntryDialog: Boolean = false,
-    val selectedEntry: TimeEntry? = null,
     val showFilterDialog: Boolean = false,
     val statistics: TimeStatistics = TimeStatistics(),
     
@@ -55,19 +64,6 @@ data class TimeTrackingState(
             .filter { it.category == category }
             .sumOf { it.duration }
     }
-    
-    /**
-     * 时间追踪统计数据
-     */
-    data class TimeStatistics(
-        val totalDuration: Long = 0,
-        val productiveTime: Long = 0,
-        val categoryBreakdown: Map<TimeCategory, Long> = emptyMap(),
-        val dailyAverage: Long = 0,
-        val longestStreak: Int = 0,
-        val currentStreak: Int = 0,
-        val mostTrackedCategory: TimeCategory? = null
-    )
     
     companion object {
         /**

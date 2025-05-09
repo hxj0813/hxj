@@ -84,4 +84,5 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 }

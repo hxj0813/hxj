@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.test2.data.local.converter.DateConverter
+import com.example.test2.data.local.converter.TimeTrackerConverter
 import com.example.test2.data.local.dao.BadgeDao
 import com.example.test2.data.local.dao.GoalDao
 import com.example.test2.data.local.dao.HabitDao
@@ -17,6 +18,7 @@ import com.example.test2.data.local.dao.CheckInTaskDao
 import com.example.test2.data.local.dao.PomodoroTaskDao
 import com.example.test2.data.local.dao.TaskTagDao
 import com.example.test2.data.local.dao.TaskLogDao
+import com.example.test2.data.local.dao.TimeTrackingDao
 import com.example.test2.data.local.entity.BadgeEntity
 import com.example.test2.data.local.entity.GoalEntity
 import com.example.test2.data.local.entity.HabitEntity
@@ -28,6 +30,11 @@ import com.example.test2.data.local.entity.CheckInTaskEntity
 import com.example.test2.data.local.entity.PomodoroTaskEntity
 import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.TaskLogEntity
+import com.example.test2.data.local.entity.timetracking.TimeEntryEntity
+import com.example.test2.data.local.entity.timetracking.TimeEntryTagCrossRef
+import com.example.test2.data.local.entity.timetracking.TimeGoalEntity
+import com.example.test2.data.local.entity.timetracking.TimeStatEntity
+import com.example.test2.data.local.entity.timetracking.TimeTagEntity
 import com.example.test2.data.local.migration.DatabaseMigrations
 
 /**
@@ -46,13 +53,19 @@ import com.example.test2.data.local.migration.DatabaseMigrations
         CheckInTaskEntity::class,
         PomodoroTaskEntity::class,
         TaskTagEntity::class,
-        TaskLogEntity::class
+        TaskLogEntity::class,
+        // 时间追踪相关实体
+        TimeEntryEntity::class,
+        TimeTagEntity::class,
+        TimeEntryTagCrossRef::class,
+        TimeStatEntity::class,
+        TimeGoalEntity::class
         // 随着应用扩展，可以在这里添加更多实体
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
-@TypeConverters(DateConverter::class)
+@TypeConverters(DateConverter::class, TimeTrackerConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     /**
      * 获取目标DAO
@@ -109,6 +122,11 @@ abstract class AppDatabase : RoomDatabase() {
      */
     abstract fun taskLogDao(): TaskLogDao
     
+    /**
+     * 获取时间追踪DAO
+     */
+    abstract fun timeTrackingDao(): TimeTrackingDao
+    
     // 随着应用扩展，可以在这里添加更多DAO获取方法
     
     companion object {
@@ -128,7 +146,11 @@ abstract class AppDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                 // 添加迁移策略
-                .addMigrations(DatabaseMigrations.MIGRATION_1_2)
+                .addMigrations(
+                    DatabaseMigrations.MIGRATION_1_2,
+                    DatabaseMigrations.MIGRATION_2_3,
+                    DatabaseMigrations.MIGRATION_3_4
+                )
                 // 当没有找到迁移路径时才使用破坏性迁移
                 .fallbackToDestructiveMigration()
                 .build()
