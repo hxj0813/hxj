@@ -1,5 +1,6 @@
 package com.example.test2.di
 
+import android.content.Context
 import com.example.test2.data.local.AppDatabase
 import com.example.test2.data.local.dao.GoalDao
 import com.example.test2.data.local.dao.NoteDao
@@ -10,9 +11,11 @@ import com.example.test2.data.repository.TimeTrackingRepository
 import com.example.test2.data.repository.impl.GoalRepositoryImpl
 import com.example.test2.data.repository.impl.NoteRepositoryImpl
 import com.example.test2.data.repository.impl.TimeEntryRepositoryImpl
+import com.example.test2.util.NoteImageManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -40,8 +43,12 @@ object RepositoryModule {
      */
     @Provides
     @Singleton
-    fun provideNoteRepository(noteDao: NoteDao): NoteRepository {
-        return NoteRepositoryImpl(noteDao)
+    fun provideNoteRepository(
+        noteDao: NoteDao, 
+        @ApplicationContext context: Context,
+        imageManager: NoteImageManager
+    ): NoteRepository {
+        return NoteRepositoryImpl(noteDao, context, imageManager)
     }
     
     /**

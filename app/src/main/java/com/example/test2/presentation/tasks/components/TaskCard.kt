@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,6 +86,9 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.test2.data.local.entity.TaskTagEntity
+import com.example.test2.data.repository.TaskTagRepository
 
 /**
  * 现代化的任务卡片组件
@@ -97,7 +101,9 @@ import androidx.compose.material.icons.filled.Assignment
  * @param onStartClick 开始任务的回调，仅对POMODORO类型任务生效
  * @param onCardClick 导航到任务详情的回调
  * @param modifier Modifier修饰符
+ * @param taskTagRepository 任务标签仓库
  */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCard(
@@ -108,7 +114,8 @@ fun TaskCard(
     onCheckinClick: (() -> Unit)? = null,
     onStartClick: (() -> Unit)? = null,
     onCardClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    taskTagRepository: TaskTagRepository? = null
 ) {
     // 颜色定义
     val taskTypeColors = mapOf(
@@ -133,6 +140,16 @@ fun TaskCard(
     
     // 是否显示操作菜单
     var showActions by remember { mutableStateOf(false) }
+    
+    // 获取标签信息
+    var tagInfo by remember { mutableStateOf<TaskTagEntity?>(null) }
+    
+    // 如果任务有标签ID并且提供了仓库，尝试加载标签信息
+    LaunchedEffect(task.tagId, taskTagRepository) {
+        if (task.tagId != null && taskTagRepository != null) {
+            tagInfo = taskTagRepository.getTagById(task.tagId)
+        }
+    }
     
     Card(
         modifier = modifier
@@ -205,9 +222,12 @@ fun TaskCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // 任务类型标签
-                        TaskTypeChip(task.getTaskTypeEnum())
+                        TaskTypeChip(
+                            taskType = task.getTaskTypeEnum(),
+                            tagEntity = tagInfo
+                        )
                         
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         
                         // 优先级指示器
                         Box(
@@ -218,6 +238,12 @@ fun TaskCard(
                         )
                         
                         Spacer(modifier = Modifier.width(4.dp))
+                        
+                        // 添加标签显示 - 如果有标签信息
+                        // 由于标签已经在TaskTypeChip中显示，不再需要单独显示
+                        // 仅为番茄钟类型任务时，TaskTypeChip已包含标签信息
+                        
+                        Spacer(modifier = Modifier.weight(1f))
                         
                         // 截止日期
                         Row(

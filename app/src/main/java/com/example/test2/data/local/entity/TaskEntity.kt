@@ -27,10 +27,17 @@ import com.example.test2.data.local.entity.TagCategory
             parentColumns = ["id"],
             childColumns = ["goalId"],
             onDelete = ForeignKey.SET_NULL
+        ),
+        ForeignKey( // 标签外键
+            entity = TaskTagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
     indices = [
         Index("goalId"),
+        Index("tagId"),
         Index("taskType"),
         Index("isCompleted"),
         Index("dueDate")
@@ -57,7 +64,8 @@ data class TaskEntity(
     
     // 关联目标ID
     val goalId: Long? = null,
-    
+    val tagId: String? = null,
+
     // 时间戳
     val createdAt: Date = Date(),
     val updatedAt: Date = Date(),

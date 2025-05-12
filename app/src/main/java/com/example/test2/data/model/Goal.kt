@@ -13,6 +13,7 @@ import java.util.Date
  * @property progress 完成进度 (0.0-1.0)
  * @property deadline 截止日期
  * @property isCompleted 是否已完成
+ * @property hasLinkedTask 是否关联任务
  * @property createdAt 创建时间
  * @property updatedAt 更新时间
  */
@@ -25,6 +26,7 @@ data class Goal(
     val progress: Float = 0f,
     val deadline: Date,
     val isCompleted: Boolean = false,
+    val hasLinkedTask: Boolean = true,
     val createdAt: Date = Date(),
     val updatedAt: Date = Date()
 ) {

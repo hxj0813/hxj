@@ -437,13 +437,24 @@ class NotesViewModel @Inject constructor(
                     .flatMap { it.images }
                     .map { it.uri }
                 
-                // 清理未使用的图片
-                val cleanedCount = imageManager.cleanupUnusedImages(usedImageUris)
+                Log.d("NotesViewModel", "准备清理未使用图片，当前有 ${usedImageUris.size} 个使用中的图片")
                 
-                if (cleanedCount > 0) {
-                    // 可选：记录日志或通知用户
+                // 添加当前编辑中的笔记图片
+                val editingNote = _state.value.editingNote
+                if (editingNote != null && editingNote.images.isNotEmpty()) {
+                    val editingImages = editingNote.images.map { it.uri }
+                    Log.d("NotesViewModel", "添加编辑中笔记的 ${editingImages.size} 张图片到保护列表")
+                    val combinedUris = usedImageUris + editingImages
+                    // 清理未使用的图片，确保不清理正在使用的图片
+                    val cleanedCount = imageManager.cleanupUnusedImages(combinedUris.distinct())
+                    Log.d("NotesViewModel", "清理了 $cleanedCount 张未使用的图片")
+                } else {
+                    // 清理未使用的图片
+                    val cleanedCount = imageManager.cleanupUnusedImages(usedImageUris)
+                    Log.d("NotesViewModel", "清理了 $cleanedCount 张未使用的图片")
                 }
             } catch (e: Exception) {
+                Log.e("NotesViewModel", "清理图片过程中出错: ${e.message}", e)
                 // 忽略清理错误
             }
         }

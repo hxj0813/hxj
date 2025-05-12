@@ -31,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test2.data.local.entity.TaskEntity as Task
 import com.example.test2.data.local.entity.TaskPriority
 import com.example.test2.data.local.entity.TaskType
+import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.presentation.tasks.viewmodel.TaskManagerViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -252,6 +253,27 @@ fun TaskDetailScreen(
                                         },
                                         color = priorityColor
                                     )
+                                    
+                                    // 标签信息
+                                    if (currentTask.tagId != null) {
+                                        // 获取标签信息
+                                        var tagInfo by remember { mutableStateOf<TaskTagEntity?>(null) }
+                                        
+                                        // 获取标签详情
+                                        LaunchedEffect(currentTask.tagId) {
+                                            tagInfo = viewModel.getTaskTagRepository().getTagById(currentTask.tagId)
+                                        }
+                                        
+                                        // 如果获取到标签信息，则显示
+                                        tagInfo?.let { tag ->
+                                            InfoItem(
+                                                icon = Icons.Default.Label,
+                                                label = "标签",
+                                                value = tag.name,
+                                                color = Color(tag.color)
+                                            )
+                                        }
+                                    }
                                     
                                     // 目标关联
                                     if (currentTask.goalId != null) {

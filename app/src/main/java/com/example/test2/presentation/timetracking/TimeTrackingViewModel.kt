@@ -617,12 +617,11 @@ class TimeTrackingViewModel @Inject constructor(
             try {
                 _state.update { it.copy(isLoading = true, error = null) }
                 
-                // 从任务仓库加载任务
-                // 简化实现：创建一个示例任务
+                // 创建一个任务对象，使用更自然的标题和描述
                 val task = Task(
-                    id = taskId.toLongOrNull() ?: UUID.randomUUID().mostSignificantBits and Long.MAX_VALUE,
-                    title = "示例任务 $taskId",
-                    description = "这是一个示例任务",
+                    id = taskId.toLongOrNull() ?: 0,
+                    title = "专注工作",  // 使用通用的标题，不显示"示例任务"或"任务 #ID"
+                    description = "专注时间",  // 使用简洁的描述
                     type = TaskType.POMODORO,
                     priority = TaskPriority.MEDIUM,
                     dueDate = Date(),

@@ -29,6 +29,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +64,7 @@ import com.example.test2.presentation.theme.AccentPink
 import com.example.test2.presentation.theme.PrimaryDark
 import com.example.test2.presentation.theme.PrimaryLight
 import com.example.test2.util.DateTimeUtil
+import java.util.Calendar
 import java.util.Date
 
 
@@ -85,7 +89,10 @@ fun GoalDialog(
     var isImportant by remember { mutableStateOf(goal?.isImportant ?: false) }
     val progress = remember { goal?.progress ?: 0f } // 改为不可变的值
     var deadline by remember { mutableStateOf(goal?.deadline ?: Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) } // 默认一周后
-    //var hasLinkedTask by remember { mutableStateOf(goal?.hasLinkedTask ?: true) } // 新增关联任务状态，默认选中
+    var hasLinkedTask by remember { mutableStateOf(goal?.hasLinkedTask ?: true) } // 新增关联任务状态，默认选中
+    
+    // 日期选择器状态
+    var showDatePicker by remember { mutableStateOf(false) }
     
     // 表单验证
     val isTitleValid = title.isNotBlank()
@@ -203,10 +210,9 @@ fun GoalDialog(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
-                    // 这里可以添加日期选择器，但为简化代码，暂不实现
                     Spacer(modifier = Modifier.weight(1f))
                     
-                    TextButton(onClick = { /* 显示日期选择器 */ }) {
+                    TextButton(onClick = { showDatePicker = true }) {
                         Text("更改")
                     }
                 }
@@ -260,10 +266,10 @@ fun GoalDialog(
                     
                     Spacer(modifier = Modifier.weight(1f))
                     
-                    //                    Switch(
-                    //                        checked = hasLinkedTask,
-                    //                        onCheckedChange = { hasLinkedTask = it }
-                    //                    )
+                    Switch(
+                        checked = hasLinkedTask,
+                        onCheckedChange = { hasLinkedTask = it }
+                    )
                 }
                 
                 // 如果是编辑模式，显示进度条（只读）
@@ -336,7 +342,7 @@ fun GoalDialog(
                                     progress = progress,
                                     deadline = deadline,
                                     isCompleted = goal?.isCompleted ?: false,
-                                    //hasLinkedTask = hasLinkedTask,
+                                    hasLinkedTask = hasLinkedTask,
                                     createdAt = goal?.createdAt ?: Date(),
                                     updatedAt = Date()
                                 )
@@ -351,5 +357,54 @@ fun GoalDialog(
                 }
             }
         }
+    }
+    
+    // 日期选择器对话框
+    if (showDatePicker) {
+        ShowDatePicker(
+            initialDate = deadline,
+            onDateSelected = { 
+                deadline = it
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+}
+
+/**
+ * 日期选择器对话框
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShowDatePicker(
+    initialDate: Date,
+    onDateSelected: (Date) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate.time
+    )
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                val selectedDateMillis = datePickerState.selectedDateMillis
+                if (selectedDateMillis != null) {
+                    val selectedDate = Date(selectedDateMillis)
+                    onDateSelected(selectedDate)
+                }
+            }) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
     }
 } 

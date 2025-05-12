@@ -238,6 +238,7 @@ class TaskManagerViewModel @Inject constructor(
                     priority = state.newTaskPriority.ordinal,
                     dueDate = state.newTaskDueDate,
                     goalId = state.newTaskGoalId,
+                    tagId = state.newPomodoroTagId,
                     createdAt = Date(),
                     updatedAt = Date()
                 )
@@ -624,15 +625,21 @@ class TaskManagerViewModel @Inject constructor(
     }
     
     /**
+     * 获取所有标签
+     */
+    fun getAllTags() = taskTagRepository.getAllTags()
+    
+    /**
+     * 获取任务标签仓库
+     */
+    fun getTaskTagRepository() = taskTagRepository
+    
+    /**
      * 初始化默认标签
      */
     private fun initDefaultTags() {
         viewModelScope.launch {
-            try {
-                taskTagRepository.initDefaultTags()
-            } catch (e: Exception) {
-                // 忽略标签初始化错误
-            }
+            taskTagRepository.initDefaultTags()
         }
     }
     
@@ -721,6 +728,7 @@ class TaskManagerViewModel @Inject constructor(
                     priority = taskPriority,
                     dueDate = dueDate,
                     goalId = goalId,
+                    tagId = pomodoroTagId,
                     createdAt = Date(),
                     updatedAt = Date()
                 )
@@ -806,6 +814,7 @@ class TaskManagerViewModel @Inject constructor(
                         priority = taskPriority,
                         dueDate = dueDate,
                         goalId = goalId,
+                        tagId = pomodoroTagId,
                         updatedAt = Date()
                     )
                     

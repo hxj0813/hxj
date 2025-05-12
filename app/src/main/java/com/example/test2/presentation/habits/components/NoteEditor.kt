@@ -256,32 +256,43 @@ fun NoteEditor(
             // 保存按钮
             Button(
                 onClick = {
-                    val note = if (isEditMode) {
-                        // 在编辑模式下，必须确保所有字段都正确复制
-                        
-                        // 记录图片信息
+                    // 日志记录原始图片信息
+                    if (isEditMode) {
                         existingNote!!.images.forEachIndexed { index, image ->
                             android.util.Log.d("NoteEditor", "保存已有图片[$index]: ${image.uri}")
+                            android.util.Log.d("NoteEditor", "图片文件是否存在: ${image.isValidFile()}")
                         }
-                        
-                        existingNote.copy(
+                    } else {
+                        images.forEachIndexed { index, image ->
+                            android.util.Log.d("NoteEditor", "保存新图片[$index]: ${image.uri}")
+                            android.util.Log.d("NoteEditor", "图片文件是否存在: ${image.isValidFile()}")
+                        }
+                    }
+                    
+                    val note = if (isEditMode) {
+                        // 在编辑模式下，必须确保所有字段都正确复制
+                        existingNote!!.copy(
                             title = title,
                             content = content,
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            // 重要：保持原有图片列表不变
-                            images = existingNote.images,
+                            // 保持原有图片列表不变
+                            images = existingNote.images.map { image ->
+                                // 确保图片URI是绝对路径格式
+                                val filePath = image.getFilePath()
+                                if (filePath != null) {
+                                    // 如果能获取到文件路径，使用绝对路径
+                                    image.copy(uri = filePath)
+                                } else {
+                                    // 否则保持原样
+                                    image
+                                }
+                            },
                             // 更新时间戳
                             updatedAt = LocalDateTime.now().toDate()
                         )
                     } else {
                         // 创建全新的笔记
-                        
-                        // 记录图片信息
-                        images.forEachIndexed { index, image ->
-                            android.util.Log.d("NoteEditor", "保存新图片[$index]: ${image.uri}")
-                        }
-                        
                         HabitNote(
                             id = UUID.randomUUID().toString(),
                             habitId = habitId,
@@ -289,15 +300,28 @@ fun NoteEditor(
                             content = content,
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            images = images,
+                            // 处理新图片，确保使用绝对路径
+                            images = images.map { image ->
+                                val filePath = image.getFilePath()
+                                if (filePath != null) {
+                                    // 如果能获取到文件路径，使用绝对路径
+                                    image.copy(uri = filePath)
+                                } else {
+                                    // 否则保持原样
+                                    image
+                                }
+                            },
                             createdAt = LocalDateTime.now().toDate(),
                             updatedAt = LocalDateTime.now().toDate()
                         )
                     }
                     
-                    // 调试信息
+                    // 记录最终保存的图片信息
                     android.util.Log.d("NoteEditor", "保存笔记，ID: ${note.id}, 标题: ${note.title}")
                     android.util.Log.d("NoteEditor", "笔记图片数量: ${note.images.size}")
+                    note.images.forEachIndexed { index, image ->
+                        android.util.Log.d("NoteEditor", "最终保存图片[$index]: ${image.uri}")
+                    }
                     
                     // 保存笔记
                     onSave(note)
@@ -387,18 +411,18 @@ fun ContentEditor(
         modifier = Modifier.fillMaxWidth()
     ) {
         // 编辑器工具栏（可以实现富文本编辑功能，这里只是一个装饰）
-        Row(
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-        ) {
-            // 样式指示器 - 在实际应用中可以实现富文本功能
-            FormatIndicator("B", MaterialTheme.colorScheme.primary, isBold = true)
-            FormatIndicator("I", MaterialTheme.colorScheme.primary)
-            FormatIndicator("U", MaterialTheme.colorScheme.primary)
-        }
+//        Row(
+//            horizontalArrangement = Arrangement.Start,
+//            verticalAlignment = Alignment.CenterVertically,
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(bottom = 8.dp)
+//        ) {
+//            // 样式指示器 - 在实际应用中可以实现富文本功能
+//            FormatIndicator("B", MaterialTheme.colorScheme.primary, isBold = true)
+//            FormatIndicator("I", MaterialTheme.colorScheme.primary)
+//            FormatIndicator("U", MaterialTheme.colorScheme.primary)
+//        }
 
         // 使用BasicTextField实现自定义样式
         BasicTextField(

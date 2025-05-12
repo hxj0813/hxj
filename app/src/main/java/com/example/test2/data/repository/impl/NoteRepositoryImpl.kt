@@ -1,24 +1,39 @@
 package com.example.test2.data.repository.impl
 
+import android.content.Context
 import com.example.test2.data.local.dao.NoteDao
 import com.example.test2.data.local.entity.NoteEntity
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.repository.NoteRepository
+import com.example.test2.util.NoteImageManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.File
 import java.util.Calendar
 import java.util.Date
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 笔记仓库实现类
  * 通过NoteDao实现笔记数据的存储与检索
  */
 class NoteRepositoryImpl @Inject constructor(
-    private val noteDao: NoteDao
+    private val noteDao: NoteDao,
+    @ApplicationContext private val context: Context,
+    private val imageManager: NoteImageManager
 ) : NoteRepository {
 
+    // 图片存储目录
+    private val imageDir: File by lazy {
+        File(context.filesDir, "note_images").apply {
+            if (!exists()) mkdirs()
+        }
+    }
+    
     // 查询操作
     
     override fun getAllNotes(): Flow<List<HabitNote>> {
@@ -152,5 +167,13 @@ class NoteRepositoryImpl @Inject constructor(
     
     override suspend fun deleteNotesBeforeDate(date: Date): Int {
         return noteDao.deleteNotesBeforeDate(date)
+    }
+
+    /**
+     * 清理未使用的图片
+     * 委托给NoteImageManager处理
+     */
+    suspend fun cleanupUnusedImages(usedUris: List<String>): Int = withContext(Dispatchers.IO) {
+        return@withContext imageManager.cleanupUnusedImages(usedUris)
     }
 } 

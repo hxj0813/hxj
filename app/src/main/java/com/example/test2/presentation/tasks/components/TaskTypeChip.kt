@@ -28,35 +28,43 @@ import androidx.compose.ui.unit.sp
 import com.example.test2.data.model.PomodoroSettings
 import com.example.test2.data.model.PomodoroTag
 import com.example.test2.data.local.entity.TaskType
+import com.example.test2.data.local.entity.TaskTagEntity
 
 /**
  * 任务类型标签组件
  * 
  * @param taskType 任务类型
  * @param pomodoroSettings 番茄钟设置，仅当taskType为POMODORO时有效
+ * @param tagEntity 任务标签实体，用于显示番茄钟任务的标签名
  * @param modifier Modifier修饰符
  */
 @Composable
 fun TaskTypeChip(
     taskType: TaskType,
     pomodoroSettings: PomodoroSettings? = null,
+    tagEntity: TaskTagEntity? = null,
     modifier: Modifier = Modifier
 ) {
     // 根据任务类型确定显示内容
     val chipData = when (taskType) {
-        TaskType.CHECK_IN -> ChipData(
-            backgroundColor = Color(0xFFE8F5E9),  // 浅绿色
-            contentColor = Color(0xFF4CAF50),     // 绿色
-            icon = Icons.Default.CheckCircle,
-            label = "打卡任务"
-        )
+        TaskType.CHECK_IN -> {
+            // 标签名称优先使用 TaskTagEntity 的名称
+            val tagName = tagEntity?.name ?: "日常"
+            
+            ChipData(
+                backgroundColor = Color(0xFFE8F5E9),  // 浅绿色
+                contentColor = Color(0xFF4CAF50),     // 绿色
+                icon = Icons.Default.CheckCircle,
+                label = "打卡任务 - $tagName"
+            )
+        }
         TaskType.POMODORO -> {
-            // 获取番茄钟标签
-            val tag = pomodoroSettings?.tag ?: PomodoroTag.STUDY
-            val tagName = if (tag == PomodoroTag.CUSTOM && !pomodoroSettings?.customTagName.isNullOrBlank())
-                pomodoroSettings?.customTagName
-            else 
-                tag.getDisplayName()
+            // 标签名称优先使用 TaskTagEntity 的名称
+            val tagName = tagEntity?.name ?: 
+                if (pomodoroSettings?.tag == PomodoroTag.CUSTOM && !pomodoroSettings.customTagName.isNullOrBlank())
+                    pomodoroSettings.customTagName
+                else 
+                    pomodoroSettings?.tag?.getDisplayName() ?: "学习"
             
             ChipData(
                 backgroundColor = Color(0xFFFFF3E0),  // 浅橙色
@@ -83,17 +91,7 @@ fun TaskTypeChip(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            // 如果是番茄钟任务，显示标签颜色
-            if (taskType == TaskType.POMODORO && pomodoroSettings != null) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(Color(pomodoroSettings.tag.getColor()))
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-            }
-            
+            // 直接显示图标，不再显示标签颜色圆点
             Icon(
                 imageVector = chipData.icon,
                 contentDescription = null,

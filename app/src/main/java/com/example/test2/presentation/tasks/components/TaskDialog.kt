@@ -98,6 +98,13 @@ import java.util.Date
 import java.util.Locale
 import com.example.test2.presentation.tasks.components.PriorityIndicator
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import com.example.test2.presentation.tasks.viewmodel.TaskManagerViewModel
+import androidx.compose.runtime.collectAsState
+import com.example.test2.data.local.entity.TaskTagEntity
+import com.example.test2.data.local.entity.TagCategory
 
 /**
  * 任务数据模型 - 用于传递任务编辑信息
@@ -138,7 +145,8 @@ fun TaskDialog(
     taskEntity: com.example.test2.data.local.entity.TaskEntity? = null,
     editorState: com.example.test2.presentation.tasks.viewmodel.TaskEditorState,
     onDismiss: () -> Unit,
-    onSave: (TaskEditorData) -> Unit
+    onSave: (TaskEditorData) -> Unit,
+    viewModel: TaskManagerViewModel
 ) {
     // 表单状态 - 优先使用editorState中的值，其次是taskEntity中的值
     var title by remember { mutableStateOf(editorState.newTaskTitle.ifEmpty { taskEntity?.title ?: "" }) }
@@ -171,14 +179,13 @@ fun TaskDialog(
     var sessionsBeforeLongBreak by remember { mutableStateOf(editorState.newPomodoroEstimatedCount) }
     var pomodoroTagId by remember { mutableStateOf(editorState.newPomodoroTagId) }
     
-    // 日期格式化器
-    val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()) }
+    // 日期格式化器（移除旧的，使用DateTimeUtil）
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     
     // 各种下拉菜单状态
     var priorityMenuExpanded by remember { mutableStateOf(false) }
     var goalMenuExpanded by remember { mutableStateOf(false) }
-    var datePickerExpanded by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var timePickerExpanded by remember { mutableStateOf(false) }
     
     // 表单验证
@@ -316,7 +323,7 @@ fun TaskDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { datePickerExpanded = !datePickerExpanded },
+                        .clickable { showDatePicker = true },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -329,17 +336,15 @@ fun TaskDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     Text(
-                        text = "截止日期: ${dateFormatter.format(dueDate)}",
+                        text = "截止日期: ${DateTimeUtil.formatDate(dueDate)}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
                     Spacer(modifier = Modifier.weight(1f))
                     
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "选择日期",
-                        tint = Color.Gray
-                    )
+                    TextButton(onClick = { showDatePicker = true }) {
+                        Text("更改")
+                    }
                 }
                 
                 // 优先级选择
@@ -450,7 +455,150 @@ fun TaskDialog(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 标签选择
+                Text(
+                    text = "任务标签",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 标签选项
+                var tagMenuExpanded by remember { mutableStateOf(false) }
                 
+                // 从 ViewModel 获取标签列表
+                val allTags by viewModel.getAllTags().collectAsState(initial = emptyList())
+                
+                // 使用数据库中的标签
+                // 如果标签列表为空，使用默认标签作为备选
+                val tagOptions = if (allTags.isNotEmpty()) {
+                    allTags
+                } else {
+                    // 使用默认标签作为备选
+                    listOf(
+                        TaskTagEntity(
+                            id = "STUDY",
+                            name = "学习",
+                            category = TagCategory.STUDY.ordinal,
+                            color = 0xFF2196F3.toInt()
+                        ),
+                        TaskTagEntity(
+                            id = "WORK",
+                            name = "工作",
+                            category = TagCategory.WORK.ordinal,
+                            color = 0xFF4CAF50.toInt()
+                        ),
+                        TaskTagEntity(
+                            id = "EXERCISE",
+                            name = "运动",
+                            category = TagCategory.EXERCISE.ordinal,
+                            color = 0xFFFF9800.toInt()
+                        ),
+                        TaskTagEntity(
+                            id = "READING",
+                            name = "阅读",
+                            category = TagCategory.READING.ordinal,
+                            color = 0xFF9C27B0.toInt()
+                        ),
+                        TaskTagEntity(
+                            id = "CREATIVE",
+                            name = "创意",
+                            category = TagCategory.CREATIVE.ordinal,
+                            color = 0xFFE91E63.toInt()
+                        ),
+                        TaskTagEntity(
+                            id = "PERSONAL",
+                            name = "个人发展",
+                            category = TagCategory.PERSONAL.ordinal,
+                            color = 0xFF3F51B5.toInt()
+                        ),
+                        TaskTagEntity(
+                            id = "OTHER",
+                            name = "其他",
+                            category = TagCategory.OTHER.ordinal,
+                            color = 0xFF607D8B.toInt()
+                        )
+                    )
+                }
+                
+                // 默认选择"学习"标签或者传入的标签
+                var selectedTagIndex by remember { mutableStateOf(
+                    if (pomodoroTagId != null) {
+                        tagOptions.indexOfFirst { it.id == pomodoroTagId }.takeIf { it >= 0 } ?: 0
+                    } else {
+                        // 默认选择学习标签
+                        tagOptions.indexOfFirst { it.category == TagCategory.STUDY.ordinal }.takeIf { it >= 0 } ?: 0
+                    }
+                ) }
+                
+                // 更新pomodoroTagId
+                LaunchedEffect(selectedTagIndex, tagOptions) {
+                    if (tagOptions.isNotEmpty() && selectedTagIndex < tagOptions.size) {
+                        pomodoroTagId = tagOptions[selectedTagIndex].id
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { tagMenuExpanded = true },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 显示选中的标签颜色
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color(tagOptions.getOrNull(selectedTagIndex)?.color ?: 0xFF2196F3.toInt()))
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    // 显示选中的标签名称
+                    Text(
+                        text = "标签: ${tagOptions.getOrNull(selectedTagIndex)?.name ?: "学习"}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "选择标签",
+                        tint = Color.Gray
+                    )
+                    
+                    // 标签下拉菜单
+                    DropdownMenu(
+                        expanded = tagMenuExpanded,
+                        onDismissRequest = { tagMenuExpanded = false }
+                    ) {
+                        tagOptions.forEachIndexed { index, tag ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(12.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(tag.color))
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(tag.name) 
+                                    }
+                                },
+                                onClick = { 
+                                    selectedTagIndex = index
+                                    tagMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
                 // 根据任务类型显示不同的设置面板
                 when (taskType) {
                     TaskType.CHECK_IN -> {
@@ -861,6 +1009,53 @@ fun TaskDialog(
                 }
             }
         }
+    }
+
+    // 在 Dialog 的末尾添加日期选择器对话框
+    if (showDatePicker) {
+        ShowDatePicker(
+            initialDate = dueDate,
+            onDateSelected = { 
+                dueDate = it
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+}
+
+// 添加日期选择器对话框组件，与 GoalDialog 中的一致
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShowDatePicker(
+    initialDate: Date,
+    onDateSelected: (Date) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate.time
+    )
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                val selectedDateMillis = datePickerState.selectedDateMillis
+                if (selectedDateMillis != null) {
+                    val selectedDate = Date(selectedDateMillis)
+                    onDateSelected(selectedDate)
+                }
+            }) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.example.test2.presentation.habits.components
 
+import android.util.Log
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material.icons.outlined.Image
@@ -34,12 +37,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.test2.data.model.HabitNote
 import com.example.test2.util.DateTimeUtil
 
@@ -228,7 +234,10 @@ fun NoteDetail(
     onEdit: (HabitNote) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
+
 ) {
+    var selectedImage by remember { mutableStateOf<String?>(null) }
+
     Surface(
         color = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxWidth()
@@ -338,11 +347,100 @@ fun NoteDetail(
                 // 复用图片网格组件
                 ImageGrid(
                     images = note.images,
-                    onImageClick = { /* 查看大图 */ },
+                    onImageClick = { image ->
+                            // 使用NoteImage对象的getAndroidUri方法获取正确的URI
+                            selectedImage = image.uri
+                            Log.d("NoteDetail", "查看图片: ${image.uri}, 文件存在: ${image.isValidFile()}")
+                         },
                     onRemoveImage = { /* 只读模式，无需处理 */ }
                 )
             }
-            
+                    // 显示大图的 Dialog
+                    if (selectedImage != null) {
+                        Dialog(onDismissRequest = { selectedImage = null }) {
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    //.background(Color.Black.copy(alpha = 0.9f))
+                                    .clickable { selectedImage = null }, // 点击关闭
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // 添加日志记录
+                                Log.d("NoteDetail", "显示大图: $selectedImage")
+                                
+                                // 增强图片加载失败时的错误处理
+                                // 使用 SubcomposeAsyncImage 替代 AsyncImage 以便处理错误状态
+                                androidx.compose.foundation.layout.Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    coil.compose.SubcomposeAsyncImage(
+                                        model = selectedImage,
+                                        contentDescription = "大图",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentScale = ContentScale.Fit,
+                                        loading = {
+                                            androidx.compose.material3.CircularProgressIndicator()
+                                        },
+                                        error = {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.Center,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.BrokenImage,
+                                                    contentDescription = "加载错误",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(48.dp)
+                                                )
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                                Text(
+                                                    text = "图片加载失败",
+                                                    color = Color.White
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+
+//                                AsyncImage(
+//                                    model = selectedImage,
+//                                    contentDescription = "大图",
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .padding(16.dp),
+//                                    contentScale = ContentScale.Fit,
+////                                    error = {
+////                                        Column(
+////                                            horizontalAlignment = Alignment.CenterHorizontally,
+////                                            verticalArrangement = Arrangement.Center,
+////                                            modifier = Modifier
+////                                                .fillMaxWidth()
+////                                                .padding(32.dp)
+////                                        ) {
+////                                            Icon(
+////                                                imageVector = Icons.Default.BrokenImage,
+////                                                contentDescription = "加载错误",
+////                                                tint = Color.White,
+////                                                modifier = Modifier.size(48.dp)
+////                                            )
+////                                            Spacer(modifier = Modifier.height(16.dp))
+////                                            Text(
+////                                                text = "图片加载失败",
+////                                                color = Color.White
+////                                            )
+////                                        }
+////                                    }
+//                                )
+                            }
+                        }
+                    }
+
             Spacer(modifier = Modifier.height(32.dp))
             
             // 操作按钮区

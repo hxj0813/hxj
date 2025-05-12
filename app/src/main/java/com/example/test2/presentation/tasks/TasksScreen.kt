@@ -283,6 +283,7 @@ fun TasksScreen(
                                     }
                                 } else null,
                                 onCardClick = { onNavigateToDetail(task.id) },
+                                taskTagRepository = viewModel.getTaskTagRepository(),
                                 modifier = Modifier.animateItemPlacement(
                                     animationSpec = tween(300)
                                 )
@@ -364,7 +365,8 @@ fun TasksScreen(
                                 pomodoroTagId = taskData.pomodoroTagId
                             )
                         }
-                    }
+                    },
+                    viewModel = viewModel
                 )
             }
         }

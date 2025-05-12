@@ -19,23 +19,74 @@ data class NoteImage(
     val createdAt: Date = Date()
 ) {
     /**
-     * 将URI字符串转换为android.net.Uri对象
+     * 将URI字符串或文件路径转换为android.net.Uri对象
      * 处理各种可能的URI格式
      */
     fun getAndroidUri(): Uri? {
         return try {
-            if (uri.startsWith("file://")) {
-                Uri.parse(uri)
-            } else if (uri.startsWith("/")) {
-                Uri.parse("file://$uri")
-            } else {
-                // 尝试直接解析
-                Uri.parse(uri)
+            Log.d("NoteImage", "尝试解析URI: $uri")
+            
+            when {
+                uri.startsWith("file://") -> {
+                    // 已经是标准file://格式
+                    Uri.parse(uri)
+                }
+                uri.startsWith("/") -> {
+                    // 仅绝对路径，转为file://格式
+                    Uri.parse("file://$uri")
+                }
+                uri.startsWith("content://") -> {
+                    // content://格式
+                    Uri.parse(uri)
+                }
+                else -> {
+                    // 其他格式，尝试直接解析
+                    try {
+                        Uri.parse(uri)
+                    } catch (e: Exception) {
+                        Log.e("NoteImage", "直接解析失败，尝试作为文件路径处理", e)
+                        // 可能是文件路径，确保它是绝对路径
+                        val file = java.io.File(uri)
+                        Uri.fromFile(file)
+                    }
+                }
+            }.also { result ->
+                Log.d("NoteImage", "解析结果: $result")
+                
+                // 如果是文件URI，验证文件是否存在
+                if (result.scheme == "file") {
+                    val path = result.path
+                    if (path != null) {
+                        val file = java.io.File(path)
+                        Log.d("NoteImage", "文件存在: ${file.exists()}, 路径: ${file.absolutePath}")
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e("NoteImage", "无法解析URI: $uri", e)
             null
         }
+    }
+    
+    /**
+     * 检查URI是否指向有效文件
+     */
+    fun isValidFile(): Boolean {
+        val uri = getAndroidUri() ?: return false
+        if (uri.scheme == "file") {
+            val path = uri.path ?: return false
+            val file = java.io.File(path)
+            return file.exists() && file.isFile && file.canRead()
+        }
+        return false
+    }
+    
+    /**
+     * 获取文件路径（如果这是一个文件URI）
+     */
+    fun getFilePath(): String? {
+        val uri = getAndroidUri() ?: return null
+        return if (uri.scheme == "file") uri.path else null
     }
     
     /**

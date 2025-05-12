@@ -41,14 +41,47 @@ fun ImageThumbnail(
 ) {
     val context = LocalContext.current
     
-    // 尝试从字符串解析URI
+    // 记录图片信息用于调试
+    Log.d("ImageThumbnail", "处理图片 ID: ${image.id}")
+    Log.d("ImageThumbnail", "图片原始URI: ${image.uri}")
+    
+    // 尝试从字符串解析URI - 增强版
     val imageUri = try {
-        // 使用NoteImage的新方法获取Android URI
-        val uri = image.getAndroidUri()
-        Log.d("ImageThumbnail", "加载图片URI: $uri")
+        // 尝试多种URI格式
+        val uri = when {
+            image.uri.startsWith("file://") -> {
+                Uri.parse(image.uri)
+            }
+            image.uri.startsWith("/") -> {
+                Uri.parse("file://${image.uri}")
+            }
+            image.uri.startsWith("content://") -> {
+                Uri.parse(image.uri)
+            }
+            else -> {
+                // 尝试直接解析
+                Log.d("ImageThumbnail", "尝试直接解析URI: ${image.uri}")
+                try {
+                    Uri.parse(image.uri)
+                } catch (e: Exception) {
+                    Log.e("ImageThumbnail", "直接解析失败，尝试添加file://前缀")
+                    Uri.parse("file://${image.uri}")
+                }
+            }
+        }
+        
+        Log.d("ImageThumbnail", "解析后的URI: $uri")
+        // 检查文件是否存在
+        if (uri.scheme == "file") {
+            val path = uri.path
+            if (path != null) {
+                val file = java.io.File(path)
+                Log.d("ImageThumbnail", "检查文件是否存在: ${file.absolutePath}, 存在: ${file.exists()}, 大小: ${if (file.exists()) file.length() else "N/A"}")
+            }
+        }
         uri
     } catch (e: Exception) {
-        Log.e("ImageThumbnail", "解析URI失败: ${image.uri}", e)
+        Log.e("ImageThumbnail", "无法解析URI: ${image.uri}", e)
         null
     }
     
@@ -62,7 +95,27 @@ fun ImageThumbnail(
         // 使用Coil的SubcomposeAsyncImage加载图片
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(context)
-                .data(imageUri)
+                .data(
+                    // 尝试多种数据源格式
+                    when {
+                        // 优先使用URI对象
+                        imageUri != null -> {
+                            Log.d("ImageThumbnail", "使用URI加载图片: $imageUri")
+                            imageUri
+                        }
+                        // 如果是文件路径，尝试使用文件
+                        image.uri.startsWith("/") -> {
+                            val file = java.io.File(image.uri)
+                            Log.d("ImageThumbnail", "使用文件路径加载图片: ${file.absolutePath}, 存在: ${file.exists()}")
+                            file
+                        }
+                        // 最后尝试直接使用字符串
+                        else -> {
+                            Log.d("ImageThumbnail", "使用原始字符串加载图片: ${image.uri}")
+                            image.uri
+                        }
+                    }
+                )
                 .crossfade(true)
                 .build(),
             contentDescription = "笔记图片",
@@ -84,14 +137,24 @@ fun ImageThumbnail(
                 }
             },
             error = {
-                // 错误状态
+                // 错误状态 - 增加详细日志
+                Log.e("ImageThumbnail", "图片加载失败: $imageUri")
+                
+                // 尝试检查文件是否存在
+                if (imageUri?.scheme == "file") {
+                    val path = imageUri.path
+                    if (path != null) {
+                        val file = java.io.File(path)
+                        Log.e("ImageThumbnail", "文件检查: 存在=${file.exists()}, 路径=${file.absolutePath}, 可读=${file.canRead()}")
+                    }
+                }
+                
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
                         .background(color = getRandomColor(image.id))
                 ) {
-                    Log.e("ImageThumbnail", "图片加载失败: ${image.uri}")
                     Icon(
                         imageVector = Icons.Outlined.Image,
                         contentDescription = "图片加载失败",

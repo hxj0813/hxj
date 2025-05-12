@@ -276,9 +276,38 @@ fun ImageViewer(
             var offsetY by remember { mutableFloatStateOf(0f) }
             
             // 图片
+            val context = LocalContext.current
+            val imageUri = try {
+                android.util.Log.d("ImageViewer", "尝试解析图片URI: ${image.uri}")
+                image.getAndroidUri()
+            } catch (e: Exception) {
+                android.util.Log.e("ImageViewer", "解析URI失败: ${image.uri}", e)
+                null
+            }
+            
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(image.uri)
+                model = ImageRequest.Builder(context)
+                    .data(
+                        // 尝试多种数据源格式
+                        when {
+                            // 优先使用URI对象
+                            imageUri != null -> {
+                                android.util.Log.d("ImageViewer", "使用URI加载图片: $imageUri")
+                                imageUri
+                            }
+                            // 如果是文件路径，尝试使用文件
+                            image.uri.startsWith("/") -> {
+                                val file = java.io.File(image.uri)
+                                android.util.Log.d("ImageViewer", "使用文件路径加载图片: ${file.absolutePath}, 存在: ${file.exists()}")
+                                file
+                            }
+                            // 最后尝试直接使用字符串
+                            else -> {
+                                android.util.Log.d("ImageViewer", "使用原始字符串加载图片: ${image.uri}")
+                                image.uri
+                            }
+                        }
+                    )
                     .crossfade(true)
                     .build(),
                 contentDescription = image.description.ifEmpty { "笔记图片" },
