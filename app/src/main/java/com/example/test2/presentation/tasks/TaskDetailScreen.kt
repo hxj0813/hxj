@@ -1,4 +1,4 @@
-package com.example.test2.presentation.tasks
+﻿package com.example.test2.presentation.tasks
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -32,9 +32,14 @@ import com.example.test2.data.local.entity.TaskEntity as Task
 import com.example.test2.data.local.entity.TaskPriority
 import com.example.test2.data.local.entity.TaskType
 import com.example.test2.data.local.entity.TaskTagEntity
+import com.example.test2.data.local.entity.PomodoroTaskEntity
+import com.example.test2.presentation.components.SuccessDialog
 import com.example.test2.presentation.tasks.viewmodel.TaskManagerViewModel
+import com.example.test2.util.DateTimeUtil
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * 任务详情屏幕
@@ -43,8 +48,6 @@ import java.util.*
  * @param onNavigateBack 返回回调
  * @param onEdit 编辑任务回调
  * @param onStart 开始任务回调（番茄钟任务）
- * @param onComplete 完成任务回调
- * @param onDelete 删除任务回调
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,8 +56,6 @@ fun TaskDetailScreen(
     onNavigateBack: () -> Unit,
     onEdit: (Task) -> Unit,
     onStart: (String) -> Unit,
-    onComplete: (Long) -> Unit,
-    onDelete: (Long) -> Unit,
     viewModel: TaskManagerViewModel = hiltViewModel()
 ) {
     // 加载任务详情
@@ -66,6 +67,14 @@ fun TaskDetailScreen(
     val task = taskDetailState.task
     val scrollState = rememberScrollState()
     
+    // 添加状态
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
+    // 添加成功对话框状态
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf("") }
+    
     // 颜色定义
     val taskTypeColors = mapOf(
         TaskType.CHECK_IN to Color(0xFF4CAF50),   // 绿色
@@ -74,6 +83,17 @@ fun TaskDetailScreen(
     
     val currentColor = taskTypeColors[task?.getTaskTypeEnum()] ?: Color(0xFF4A90E2)
     val gradientColors = listOf(currentColor, currentColor.copy(alpha = 0.7f))
+    
+    // 显示成功对话框
+    if (showSuccessDialog) {
+        SuccessDialog(
+            message = successMessage,
+            onDismiss = {
+                showSuccessDialog = false
+                onNavigateBack()
+            }
+        )
+    }
     
     Scaffold(
         topBar = {
@@ -116,7 +136,11 @@ fun TaskDetailScreen(
                             text = { Text("删除任务") },
                             onClick = {
                                 expanded = false
-                                task?.let { onDelete(it.id.toLong()) }
+                                task?.let { 
+                                    viewModel.deleteTask(it.id)
+                                    successMessage = "任务已删除"
+                                    showSuccessDialog = true
+                                }
                             },
                             leadingIcon = {
                                 Icon(
@@ -136,6 +160,7 @@ fun TaskDetailScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color(0xFFF5F5F5)
     ) { paddingValues ->
         task?.let { currentTask ->
@@ -225,7 +250,7 @@ fun TaskDetailScreen(
                                         value = dateFormat.format(currentTask.createdAt),
                                         color = Color.Gray
                                     )
-                                    
+                                         
                                     // 截止日期
                                     if (currentTask.dueDate != null) {
                                         InfoItem(
@@ -340,8 +365,14 @@ fun TaskDetailScreen(
                                 TaskType.POMODORO -> {
                                     // 获取番茄钟任务信息
                                     val pomodoroTaskId = currentTask.id
-                                    // 这里我们应该使用viewModel获取PomodoroTaskEntity
-                                    // 这里简化处理，使用基础数据显示
+                                    // 使用viewModel获取PomodoroTaskEntity
+                                    var pomodoroTask by remember { mutableStateOf<PomodoroTaskEntity?>(null) }
+                                    
+                                    // 获取番茄钟任务详情
+                                    LaunchedEffect(pomodoroTaskId) {
+                                        pomodoroTask = viewModel.getPomodoroTaskRepository().getPomodoroTaskById(pomodoroTaskId)
+                                    }
+                                    
                                     Divider(modifier = Modifier.padding(vertical = 16.dp))
                                     
                                     InfoSection(
@@ -351,7 +382,7 @@ fun TaskDetailScreen(
                                             InfoItem(
                                                 icon = Icons.Outlined.AccessTime,
                                                 label = "番茄钟时长",
-                                                value = "25 分钟",
+                                                value = "${pomodoroTask?.pomodoroLength ?: 25} 分钟",
                                                 color = currentColor
                                             )
                                             
@@ -359,7 +390,7 @@ fun TaskDetailScreen(
                                             InfoItem(
                                                 icon = Icons.Default.BreakfastDining,
                                                 label = "休息设置",
-                                                value = "短休息 5 分钟，长休息 15 分钟",
+                                                value = "短休息 ${pomodoroTask?.shortBreakLength ?: 5} 分钟，长休息 ${pomodoroTask?.longBreakLength ?: 15} 分钟",
                                                 color = Color(0xFF98FF98)
                                             )
                                             
@@ -367,7 +398,7 @@ fun TaskDetailScreen(
                                             InfoItem(
                                                 icon = Icons.Default.SwapHoriz,
                                                 label = "长休息间隔",
-                                                value = "每 4 个番茄钟后",
+                                                value = "每 ${pomodoroTask?.longBreakInterval ?: 4} 个番茄钟后",
                                                 color = Color(0xFF98FF98)
                                             )
                                             
@@ -375,7 +406,7 @@ fun TaskDetailScreen(
                                             InfoItem(
                                                 icon = Icons.Default.Timer,
                                                 label = "总专注时间",
-                                                value = "0 分钟",
+                                                value = "${pomodoroTask?.totalFocusTime ?: 0} 分钟",
                                                 color = Color(0xFFFF7F7F)
                                             )
                                             
@@ -383,15 +414,21 @@ fun TaskDetailScreen(
                                             InfoItem(
                                                 icon = Icons.Default.DoneAll,
                                                 label = "总完成次数",
-                                                value = "0 次",
+                                                value = "${pomodoroTask?.completedPomodoros ?: 0} 次",
                                                 color = Color(0xFFFF7F7F)
                                             )
                                             
-                                            // 今日完成次数
+                                            // 今日完成次数 - 这个需要额外逻辑计算，简化处理
                                             InfoItem(
                                                 icon = Icons.Default.Today,
                                                 label = "今日完成次数",
-                                                value = "0 次",
+                                                value = pomodoroTask?.let { task ->
+                                                    if (task.lastSessionDate != null && DateTimeUtil.isToday(task.lastSessionDate)) {
+                                                        "${task.completedPomodoros} 次"
+                                                    } else {
+                                                        "0 次"
+                                                    }
+                                                } ?: "0 次",
                                                 color = Color(0xFFFF7F7F)
                                             )
                                         }
@@ -412,7 +449,11 @@ fun TaskDetailScreen(
                                 when (currentTask.getTaskTypeEnum()) {
                                     TaskType.CHECK_IN -> {
                                         Button(
-                                            onClick = { onComplete(currentTask.id.toLong()) },
+                                            onClick = { 
+                                                viewModel.completeTask(currentTask.id)
+                                                successMessage = "打卡成功！继续保持！"
+                                                showSuccessDialog = true
+                                            },
                                             enabled = !currentTask.isCompleted,
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = Color(0xFF4CAF50),
@@ -454,7 +495,11 @@ fun TaskDetailScreen(
                                     }
                                     else -> {
                                         Button(
-                                            onClick = { onComplete(currentTask.id.toLong()) },
+                                            onClick = { 
+                                                viewModel.completeTask(currentTask.id)
+                                                successMessage = "任务已完成！"
+                                                showSuccessDialog = true
+                                            },
                                             enabled = !currentTask.isCompleted,
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = Color(0xFF4A90E2),

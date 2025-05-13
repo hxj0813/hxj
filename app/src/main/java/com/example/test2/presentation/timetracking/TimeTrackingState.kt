@@ -13,7 +13,6 @@ import java.util.Date
 data class TimeTrackingState(
     // 核心数据
     val timeEntries: List<TimeEntry> = emptyList(),
-    val filteredEntries: List<TimeEntry> = emptyList(),
     val allTasks: List<Task> = emptyList(),
     val ongoingEntry: TimeEntry? = null,
     val selectedEntry: TimeEntry? = null,
@@ -21,7 +20,6 @@ data class TimeTrackingState(
     val activeGoals: List<TimeGoalEntity> = emptyList(),
     
     // 筛选条件
-    val selectedCategory: TimeCategory? = null,
     val selectedDate: Date = Date(),
     val dateRange: Pair<Date, Date>? = null,
     
@@ -29,7 +27,6 @@ data class TimeTrackingState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val showEntryDialog: Boolean = false,
-    val showFilterDialog: Boolean = false,
     val statistics: TimeStatistics = TimeStatistics(),
     
     // 番茄钟相关状态
@@ -48,7 +45,7 @@ data class TimeTrackingState(
      * 获取指定日期的时间条目
      */
     fun getEntriesForDate(date: Date): List<TimeEntry> {
-        return filteredEntries.filter { entry ->
+        return timeEntries.filter { entry ->
             val entryDate = entry.startTime
             entryDate.year == date.year && 
             entryDate.month == date.month && 
@@ -60,7 +57,7 @@ data class TimeTrackingState(
      * 获取指定分类的总时长（秒）
      */
     fun getTotalDurationByCategory(category: TimeCategory): Long {
-        return filteredEntries
+        return timeEntries
             .filter { it.category == category }
             .sumOf { it.duration }
     }

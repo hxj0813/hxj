@@ -20,20 +20,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -57,7 +51,6 @@ import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
 import com.example.test2.presentation.timetracking.components.StatisticsView
 import com.example.test2.presentation.timetracking.components.TimeEntryCard
-import com.example.test2.presentation.timetracking.components.TimeEntryDialog
 import com.example.test2.presentation.timetracking.components.TimerView
 import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import java.text.SimpleDateFormat
@@ -83,25 +76,6 @@ fun TimeTrackingScreen(
         viewModel.onEvent(TimeTrackingEvent.LoadTasks)
     }
     
-    // 时间条目对话框
-    if (state.showEntryDialog) {
-        TimeEntryDialog(
-            title = state.selectedEntry?.let { "编辑时间记录" } ?: "添加时间记录",
-            initialTimeEntry = state.selectedEntry,
-            tasks = state.allTasks,
-            onDismiss = {
-                viewModel.onEvent(TimeTrackingEvent.DismissDialog)
-            },
-            onSave = { timeEntry ->
-                if (state.selectedEntry != null) {
-                    viewModel.onEvent(TimeTrackingEvent.UpdateTimeEntry(timeEntry))
-                } else {
-                    viewModel.onEvent(TimeTrackingEvent.AddTimeEntry(timeEntry))
-                }
-            }
-        )
-    }
-    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -111,13 +85,6 @@ fun TimeTrackingScreen(
                     titleContentColor = MaterialTheme.colorScheme.primary
                 ),
                 actions = {
-                    IconButton(onClick = { viewModel.onEvent(TimeTrackingEvent.ShowFilterDialog) }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "筛选"
-                        )
-                    }
-                    
                     IconButton(onClick = { /* 显示日期选择器 */ showDatePicker = true }) {
                         Icon(
                             imageVector = Icons.Default.CalendarMonth,
@@ -126,21 +93,6 @@ fun TimeTrackingScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            // 只有在没有正在进行的时间条目时显示添加按钮
-            if (state.ongoingEntry == null) {
-                FloatingActionButton(
-                    onClick = { viewModel.onEvent(TimeTrackingEvent.ShowAddEntryDialog) },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "添加时间记录",
-                        tint = Color.White
-                    )
-                }
-            }
         }
     ) { paddingValues ->
         Column(
@@ -149,17 +101,6 @@ fun TimeTrackingScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // 类别选择器
-            CategorySelector(
-                selectedCategory = state.selectedCategory,
-                onCategorySelected = { category ->
-                    viewModel.onEvent(TimeTrackingEvent.FilterCategory(category))
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-            
             // 计时器视图
             TimerView(
                 ongoingEntry = state.ongoingEntry,
@@ -216,7 +157,7 @@ fun TimeTrackingScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-            } else if (state.filteredEntries.isEmpty()) {
+            } else if (state.timeEntries.isEmpty()) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -224,7 +165,7 @@ fun TimeTrackingScreen(
                         .weight(1f)
                 ) {
                     Text(
-                        text = "今天还没有时间记录\n点击底部按钮添加",
+                        text = "今天还没有时间记录",
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
@@ -238,7 +179,7 @@ fun TimeTrackingScreen(
                         .weight(1f)
                 ) {
                     items(
-                        items = state.filteredEntries,
+                        items = state.timeEntries,
                         key = { it.id }
                     ) { timeEntry ->
                         TimeEntryCard(
@@ -260,90 +201,6 @@ fun TimeTrackingScreen(
                 }
             }
         }
-    }
-}
-
-/**
- * 分类选择器
- */
-@Composable
-fun CategorySelector(
-    selectedCategory: TimeCategory?,
-    onCategorySelected: (TimeCategory?) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-    ) {
-        Text(
-            text = "按分类筛选",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(vertical = 4.dp)
-        )
-        
-        // 分类选择行
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-        ) {
-            // 全部分类选项
-            CategoryChip(
-                category = null,
-                isSelected = selectedCategory == null,
-                onClick = { onCategorySelected(null) }
-            )
-            
-            // 各分类选项
-            TimeCategory.values().forEach { category ->
-                CategoryChip(
-                    category = category,
-                    isSelected = selectedCategory == category,
-                    onClick = { onCategorySelected(category) }
-                )
-            }
-        }
-    }
-}
-
-/**
- * 分类选择芯片
- */
-@Composable
-fun CategoryChip(
-    category: TimeCategory?,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    
-    val textColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = category?.let { TimeTrackingUtils.getCategoryName(it) } ?: "全部",
-            color = textColor,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
-            )
-        )
     }
 }
 

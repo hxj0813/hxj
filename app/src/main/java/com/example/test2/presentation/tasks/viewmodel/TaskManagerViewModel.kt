@@ -7,6 +7,7 @@ import com.example.test2.data.local.entity.PomodoroTaskEntity
 import com.example.test2.data.local.entity.TaskEntity
 import com.example.test2.data.local.entity.TaskLogEntity
 import com.example.test2.data.local.entity.TaskPriority
+import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.TaskType
 import com.example.test2.data.repository.CheckInTaskRepository
 import com.example.test2.data.repository.PomodoroTaskRepository
@@ -632,7 +633,64 @@ class TaskManagerViewModel @Inject constructor(
     /**
      * 获取任务标签仓库
      */
-    fun getTaskTagRepository() = taskTagRepository
+    fun getTaskTagRepository(): TaskTagRepository {
+        return taskTagRepository
+    }
+    
+    /**
+     * 获取番茄钟任务仓库
+     */
+    fun getPomodoroTaskRepository(): PomodoroTaskRepository {
+        return pomodoroTaskRepository
+    }
+    
+    /**
+     * 获取打卡任务信息
+     * @param taskId 任务ID
+     * @return 打卡任务实体，可能为null
+     */
+    suspend fun getCheckInTaskById(taskId: String): CheckInTaskEntity? {
+        return checkInTaskRepository.getCheckInTaskById(taskId)
+    }
+    
+    /**
+     * 加载打卡任务信息用于界面初始化
+     * @param taskId 任务ID
+     * @param onResult 结果回调
+     */
+    fun loadCheckInTaskForInitialization(taskId: String, onResult: (CheckInTaskEntity?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val checkInTask = checkInTaskRepository.getCheckInTaskById(taskId)
+                onResult(checkInTask)
+            } catch (e: Exception) {
+                // 出现异常时返回null
+                onResult(null)
+            }
+        }
+    }
+    
+    /**
+     * 创建自定义标签
+     * @param tag 标签实体
+     * @param onSuccess 创建成功后的回调
+     */
+    fun createCustomTag(tag: TaskTagEntity, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                // 保存标签到数据库
+                taskTagRepository.createTag(tag)
+                
+                // 成功后执行回调
+                onSuccess()
+            } catch (e: Exception) {
+                // 创建失败，可以添加错误处理逻辑
+                _taskListState.value = _taskListState.value.copy(
+                    error = "创建标签失败: ${e.message}"
+                )
+            }
+        }
+    }
     
     /**
      * 初始化默认标签

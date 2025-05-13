@@ -25,11 +25,6 @@ sealed class TimeTrackingEvent {
     data class SelectDate(val date: Date) : TimeTrackingEvent()
     
     /**
-     * 按分类筛选
-     */
-    data class FilterCategory(val category: TimeCategory?) : TimeTrackingEvent()
-    
-    /**
      * 设置日期范围
      */
     data class SetDateRange(val startDate: Date, val endDate: Date) : TimeTrackingEvent()
@@ -43,11 +38,6 @@ sealed class TimeTrackingEvent {
      * 停止时间条目
      */
     data class StopTimeEntry(val endTime: Date = Date()) : TimeTrackingEvent()
-    
-    /**
-     * 添加时间条目
-     */
-    data class AddTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
     
     /**
      * 更新时间条目
@@ -65,19 +55,9 @@ sealed class TimeTrackingEvent {
     data class SelectTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
     
     /**
-     * 显示添加时间条目对话框
-     */
-    object ShowAddEntryDialog : TimeTrackingEvent()
-    
-    /**
      * 显示编辑时间条目对话框
      */
     data class ShowEditEntryDialog(val timeEntry: TimeEntry) : TimeTrackingEvent()
-    
-    /**
-     * 显示筛选对话框
-     */
-    object ShowFilterDialog : TimeTrackingEvent()
     
     /**
      * 关闭对话框

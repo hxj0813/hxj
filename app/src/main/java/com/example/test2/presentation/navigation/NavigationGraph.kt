@@ -208,14 +208,6 @@ fun AppNavigationGraph(
                     },
                     onStart = { taskId ->
                         navController.navigate(NavRoute.PomodoroSession.createRoute(taskId.toString()))
-                    },
-                    onComplete = { taskId ->
-                        // 完成任务
-                        navController.popBackStack()
-                    },
-                    onDelete = { taskId ->
-                        // 删除任务
-                        navController.popBackStack()
                     }
                 )
             }

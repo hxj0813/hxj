@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -105,6 +106,9 @@ import com.example.test2.presentation.tasks.viewmodel.TaskManagerViewModel
 import androidx.compose.runtime.collectAsState
 import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.TagCategory
+import kotlinx.coroutines.launch
+import java.util.UUID
+import androidx.compose.foundation.layout.heightIn
 
 /**
  * 任务数据模型 - 用于传递任务编辑信息
@@ -169,6 +173,24 @@ fun TaskDialog(
             val calendar = Calendar.getInstance().apply { time = reminderTime }
             dailyDeadlineHour = calendar.get(Calendar.HOUR_OF_DAY)
             dailyDeadlineMinute = calendar.get(Calendar.MINUTE)
+            hasDailyDeadline = true // 如果有提醒时间，则自动启用提醒
+        }
+    }
+    
+    // 从任务实体中初始化提醒时间
+    LaunchedEffect(taskEntity) {
+        if (taskEntity != null && taskType == TaskType.CHECK_IN) {
+            // 使用viewModel中的方法获取打卡任务信息
+            viewModel.loadCheckInTaskForInitialization(taskEntity.id) { checkInTask ->
+                checkInTask?.let { task ->
+                    if (task.reminderEnabled && task.reminderTime != null) {
+                        val calendar = Calendar.getInstance().apply { time = task.reminderTime }
+                        dailyDeadlineHour = calendar.get(Calendar.HOUR_OF_DAY)
+                        dailyDeadlineMinute = calendar.get(Calendar.MINUTE)
+                        hasDailyDeadline = true
+                    }
+                }
+            }
         }
     }
     
@@ -181,6 +203,19 @@ fun TaskDialog(
     
     // 日期格式化器（移除旧的，使用DateTimeUtil）
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()) }
+    val dateTimeFormatter = remember { SimpleDateFormat("yyyy年MM月dd日 HH:mm", Locale.getDefault()) }
+    
+    // 检查日期是否包含具体时间（非23:59:59）
+    fun Date.hasSpecificTime(): Boolean {
+        val calendar = Calendar.getInstance().apply { time = this@hasSpecificTime }
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        val second = calendar.get(Calendar.SECOND)
+        
+        // 如果时间不是23:59:59，则认为包含具体时间
+        return !(hour == 23 && minute == 59 && second == 59)
+    }
     
     // 各种下拉菜单状态
     var priorityMenuExpanded by remember { mutableStateOf(false) }
@@ -210,9 +245,10 @@ fun TaskDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(0.95f)  // 设置宽度为屏幕的95%
+                .heightIn(max = 650.dp)  // 限制最大高度
                 .wrapContentHeight()
-                .padding(16.dp),
+                .padding(10.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
@@ -224,7 +260,7 @@ fun TaskDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(16.dp)
                     .verticalScroll(scrollState)
             ) {
                 // 对话框标题和关闭按钮
@@ -335,16 +371,25 @@ fun TaskDialog(
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
+                    // 根据日期是否包含具体时间，显示不同的格式
+                    val displayText = if (dueDate.hasSpecificTime()) {
+                        "截止日期: ${dateTimeFormatter.format(dueDate)}"
+                    } else {
+                        "截止日期: ${dateFormatter.format(dueDate)}"
+                    }
+                    
                     Text(
-                        text = "截止日期: ${DateTimeUtil.formatDate(dueDate)}",
+                        text = displayText,
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
                     Spacer(modifier = Modifier.weight(1f))
                     
-                    TextButton(onClick = { showDatePicker = true }) {
-                        Text("更改")
-                    }
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "选择日期",
+                        tint = Color.Gray
+                    )
                 }
                 
                 // 优先级选择
@@ -534,10 +579,23 @@ fun TaskDialog(
                     }
                 ) }
                 
+                // 自定义标签对话框状态
+                var showCreateTagDialog by remember { mutableStateOf(false) }
+                
                 // 更新pomodoroTagId
                 LaunchedEffect(selectedTagIndex, tagOptions) {
                     if (tagOptions.isNotEmpty() && selectedTagIndex < tagOptions.size) {
                         pomodoroTagId = tagOptions[selectedTagIndex].id
+                    }
+                }
+                
+                // 监听pomodoroTagId的变化，更新selectedTagIndex
+                LaunchedEffect(pomodoroTagId, allTags) {
+                    if (pomodoroTagId != null && allTags.isNotEmpty()) {
+                        val index = allTags.indexOfFirst { it.id == pomodoroTagId }
+                        if (index >= 0) {
+                            selectedTagIndex = index
+                        }
                     }
                 }
 
@@ -595,6 +653,204 @@ fun TaskDialog(
                                     tagMenuExpanded = false
                                 }
                             )
+                        }
+                        
+                        // 分隔线
+                        Divider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = Color.LightGray
+                        )
+                        
+                        // 创建新标签选项
+                        DropdownMenuItem(
+                            text = { 
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "添加标签",
+                                        tint = PrimaryLight
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "创建新标签",
+                                        color = PrimaryLight
+                                    ) 
+                                }
+                            },
+                            onClick = { 
+                                tagMenuExpanded = false
+                                showCreateTagDialog = true
+                            }
+                        )
+                    }
+                }
+                
+                // 创建新标签对话框
+                if (showCreateTagDialog) {
+                    var newTagName by remember { mutableStateOf("") }
+                    var isTagNameError by remember { mutableStateOf(false) }
+                    var newTagColor by remember { mutableStateOf(0xFF3F51B5.toInt()) } // 默认靛蓝色
+                    
+                    // 可选的标签颜色列表
+                    val tagColorOptions = listOf(
+                        0xFF4CAF50.toInt(), // 绿色
+                        0xFF2196F3.toInt(), // 蓝色
+                        0xFFFF9800.toInt(), // 橙色
+                        0xFF9C27B0.toInt(), // 紫色
+                        0xFFE91E63.toInt(), // 粉色
+                        0xFF3F51B5.toInt(), // 靛蓝色
+                        0xFF607D8B.toInt(), // 蓝灰色
+                        0xFFF44336.toInt(), // 红色
+                        0xFF009688.toInt(), // 青色
+                        0xFFFFEB3B.toInt()  // 黄色
+                    )
+                    
+                    Dialog(onDismissRequest = { showCreateTagDialog = false }) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)  // 设置宽度为屏幕的90%
+                                .heightIn(max = 500.dp)  // 限制最大高度
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = 8.dp
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                                    .verticalScroll(rememberScrollState())  // 添加滚动功能
+                            ) {
+                                // 对话框标题
+                                Text(
+                                    text = "创建新标签",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                // 标签名称输入
+                                OutlinedTextField(
+                                    value = newTagName,
+                                    onValueChange = { 
+                                        newTagName = it
+                                        isTagNameError = it.isBlank()
+                                    },
+                                    label = { Text("标签名称") },
+                                    isError = isTagNameError,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Sentences
+                                    )
+                                )
+                                
+                                if (isTagNameError) {
+                                    Text(
+                                        text = "标签名称不能为空",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                // 颜色选择标题
+                                Text(
+                                    text = "标签颜色",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                // 颜色选择器
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    tagColorOptions.forEachIndexed { index, color ->
+                                        // 分两行显示颜色选项
+                                        if (index < 5) {
+                                            ColorOption(
+                                                color = Color(color),
+                                                selected = color == newTagColor,
+                                                onClick = { newTagColor = color }
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    tagColorOptions.forEachIndexed { index, color ->
+                                        // 分两行显示颜色选项
+                                        if (index >= 5) {
+                                            ColorOption(
+                                                color = Color(color),
+                                                selected = color == newTagColor,
+                                                onClick = { newTagColor = color }
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
+                                // 底部按钮
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    // 取消按钮
+                                    TextButton(onClick = { showCreateTagDialog = false }) {
+                                        Text("取消")
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    // 保存按钮
+                                    Button(
+                                        onClick = {
+                                            if (newTagName.isNotBlank()) {
+                                                // 创建新标签
+                                                val newTag = TaskTagEntity(
+                                                    id = UUID.randomUUID().toString(),
+                                                    name = newTagName,
+                                                    category = TagCategory.CUSTOM.ordinal,
+                                                    color = newTagColor,
+                                                    isDefault = false
+                                                )
+                                                
+                                                // 保存到数据库并更新选择
+                                                viewModel.createCustomTag(newTag) { 
+                                                    // 保存成功后的回调，直接设置pomodoroTagId使用新标签
+                                                    pomodoroTagId = newTag.id
+                                                    showCreateTagDialog = false
+                                                }
+                                            } else {
+                                                isTagNameError = true
+                                            }
+                                        },
+                                        enabled = newTagName.isNotBlank(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = PrimaryLight,
+                                            disabledContainerColor = Color.LightGray
+                                        )
+                                    ) {
+                                        Text("保存")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -748,6 +1004,70 @@ fun TaskDialog(
                                         contentDescription = "选择时间",
                                         tint = Color.Gray
                                     )
+                                }
+                            }
+                        }
+                        
+                        // 时间选择器对话框
+                        if (timePickerExpanded) {
+                            Dialog(
+                                onDismissRequest = { timePickerExpanded = false }
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.95f)  // 设置宽度为屏幕的95%
+                                        .heightIn(max = 520.dp)  // 设置最大高度
+                                        .padding(10.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White
+                                    ),
+                                    elevation = CardDefaults.cardElevation(
+                                        defaultElevation = 8.dp
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(16.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "选择具体时间",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        
+                                        TimePicker(
+                                            state = timePickerState,
+                                            modifier = Modifier.padding(vertical = 8.dp)
+                                        )
+                                        
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(
+                                                onClick = { timePickerExpanded = false }
+                                            ) {
+                                                Text("取消")
+                                            }
+                                            
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            
+                                            Button(
+                                                onClick = {
+                                                    dailyDeadlineHour = timePickerState.hour
+                                                    dailyDeadlineMinute = timePickerState.minute
+                                                    timePickerExpanded = false
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = PrimaryLight
+                                                )
+                                            ) {
+                                                Text("确定")
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1011,12 +1331,12 @@ fun TaskDialog(
         }
     }
 
-    // 在 Dialog 的末尾添加日期选择器对话框
+    // 显示日期选择器
     if (showDatePicker) {
         ShowDatePicker(
             initialDate = dueDate,
-            onDateSelected = { 
-                dueDate = it
+            onDateSelected = { selectedDate ->
+                dueDate = selectedDate
                 showDatePicker = false
             },
             onDismiss = { showDatePicker = false }
@@ -1036,14 +1356,124 @@ private fun ShowDatePicker(
         initialSelectedDateMillis = initialDate.time
     )
     
+    // 检查初始日期是否含有具体时间
+    val calendar = Calendar.getInstance().apply { time = initialDate }
+    val hasExistingTime = !(calendar.get(Calendar.HOUR_OF_DAY) == 23 && 
+                           calendar.get(Calendar.MINUTE) == 59 && 
+                           calendar.get(Calendar.SECOND) == 59)
+    
+    // 添加时间选择状态
+    var includeTime by remember { mutableStateOf(hasExistingTime) }
+    var selectedHour by remember { 
+        mutableStateOf(calendar.get(Calendar.HOUR_OF_DAY)) 
+    }
+    var selectedMinute by remember { 
+        mutableStateOf(calendar.get(Calendar.MINUTE)) 
+    }
+    
+    // 时间选择器状态
+    val timePickerState = rememberTimePickerState(
+        initialHour = selectedHour,
+        initialMinute = selectedMinute,
+        is24Hour = true
+    )
+    
+    // 时间选择器对话框状态
+    var showTimePicker by remember { mutableStateOf(false) }
+    
+    // 在时间选择器发生变化时更新选定的时间
+    LaunchedEffect(timePickerState.hour, timePickerState.minute) {
+        selectedHour = timePickerState.hour
+        selectedMinute = timePickerState.minute
+    }
+    
+    // 时间选择器对话框
+    if (showTimePicker) {
+        Dialog(
+            onDismissRequest = { showTimePicker = false }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)  // 设置宽度为屏幕的95%
+                    .heightIn(max = 520.dp)  // 设置最大高度
+                    .padding(10.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "选择具体时间",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    TimePicker(
+                        state = timePickerState,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = { showTimePicker = false }
+                        ) {
+                            Text("取消")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(
+                            onClick = {
+                                selectedHour = timePickerState.hour
+                                selectedMinute = timePickerState.minute
+                                showTimePicker = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryLight
+                            )
+                        ) {
+                            Text("确定")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
                 val selectedDateMillis = datePickerState.selectedDateMillis
                 if (selectedDateMillis != null) {
-                    val selectedDate = Date(selectedDateMillis)
-                    onDateSelected(selectedDate)
+                    // 创建日历实例并设置日期
+                    val calendar = Calendar.getInstance().apply {
+                        timeInMillis = selectedDateMillis
+                        
+                        // 如果包含时间，则设置小时和分钟
+                        if (includeTime) {
+                            set(Calendar.HOUR_OF_DAY, selectedHour)
+                            set(Calendar.MINUTE, selectedMinute)
+                        } else {
+                            // 如果不包含时间，则设置为当天的23:59:59
+                            set(Calendar.HOUR_OF_DAY, 23)
+                            set(Calendar.MINUTE, 59)
+                            set(Calendar.SECOND, 59)
+                        }
+                    }
+                    
+                    onDateSelected(calendar.time)
                 }
             }) {
                 Text("确定")
@@ -1053,9 +1483,86 @@ private fun ShowDatePicker(
             TextButton(onClick = onDismiss) {
                 Text("取消")
             }
-        }
+        },
+        modifier = Modifier.padding(bottom = 16.dp) // 添加底部内边距确保按钮可见
     ) {
-        DatePicker(state = datePickerState)
+        Column(
+            modifier = Modifier
+                .heightIn(max = 550.dp) // 进一步减小最大高度
+        ) {
+            DatePicker(
+                state = datePickerState,
+                title = null // 移除日期选择器标题，减少高度
+            )
+            
+            Divider(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp, bottom = 0.dp)
+            )
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (includeTime) {
+                    // 紧凑布局的时间选择区
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "时间",
+                            tint = PrimaryLight,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text(
+                            text = String.format("%02d:%02d", selectedHour, selectedMinute),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        TextButton(
+                            onClick = { showTimePicker = true },
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Text("更改", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    
+                    TextButton(
+                        onClick = { includeTime = false },
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) {
+                        Text("移除", style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    // 显示添加时间按钮
+                    TextButton(
+                        onClick = { includeTime = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = "添加时间",
+                            tint = PrimaryLight,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Text("添加具体时间", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1208,5 +1715,40 @@ private fun DateOption(
             color = PrimaryDark,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
+    }
+}
+
+/**
+ * 颜色选择选项
+ */
+@Composable
+private fun ColorOption(
+    color: Color,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(color)
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+    ) {
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .align(Alignment.Center)
+                    .background(Color.White.copy(alpha = 0.4f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "已选择",
+                    tint = Color.White,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+        }
     }
 } 

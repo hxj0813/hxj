@@ -183,11 +183,16 @@ fun PomodoroTimerView(
             // 底层圆环（背景）
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val strokeWidth = 20.dp.toPx()
+                val diameterOffset = strokeWidth / 2
+                val arcDimen = size.width - 2 * diameterOffset
+                
                 drawArc(
                     color = Color.LightGray.copy(alpha = 0.2f),
                     startAngle = 0f,
                     sweepAngle = 360f,
                     useCenter = false,
+                    topLeft = Offset(diameterOffset, diameterOffset),
+                    size = Size(arcDimen, arcDimen),
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
             }
@@ -253,6 +258,14 @@ fun PomodoroTimerView(
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Bold,
                         color = currentColor
+                    )
+                    
+                    // 显示总时间
+                    Text(
+                        text = "共${totalTimeInSeconds / 60}分钟",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                     
                     Text(

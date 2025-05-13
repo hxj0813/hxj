@@ -140,4 +140,12 @@ object DateTimeUtil {
     fun formatDateKey(date: Date): String {
         return dateFormatter.format(date)
     }
+    
+    /**
+     * 检查日期是否是今天
+     */
+    fun isToday(date: Date?): Boolean {
+        if (date == null) return false
+        return isSameDay(date, Date())
+    }
 } 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Note
 import androidx.compose.material3.*
@@ -199,7 +200,7 @@ fun PomodoroSessionScreen(
                     SessionCompletedDialog(
                         onDismiss = { viewModel.acknowledgeSessionCompleted() },
                         onSaveAndFinish = {
-                            viewModel.saveSession(it ?: "")
+                            viewModel.saveSession()
                             onFinish()
                         }
                     )
@@ -317,10 +318,8 @@ private fun StatItem(
 @Composable
 private fun SessionCompletedDialog(
     onDismiss: () -> Unit,
-    onSaveAndFinish: (String?) -> Unit
+    onSaveAndFinish: () -> Unit
 ) {
-    var notes by remember { mutableStateOf("") }
-    
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -331,41 +330,40 @@ private fun SessionCompletedDialog(
             )
         },
         text = {
-            Column {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    text = "恭喜你完成了这次专注！想记录一些想法吗？",
-                    color = Color.DarkGray
+                    text = "恭喜你完成了这次专注！",
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("笔记（可选）") },
-                    placeholder = { Text("记录你完成了什么...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    shape = RoundedCornerShape(8.dp)
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(48.dp)
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onSaveAndFinish(notes.ifEmpty { null }) },
+                onClick = onSaveAndFinish,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF4CAF50)
                 )
             ) {
-                Text("保存并完成")
+                Text("完成")
             }
         },
         dismissButton = {
             TextButton(
-                onClick = { onSaveAndFinish(null) }
+                onClick = onDismiss
             ) {
-                Text("跳过")
+                Text("关闭")
             }
         }
     )
