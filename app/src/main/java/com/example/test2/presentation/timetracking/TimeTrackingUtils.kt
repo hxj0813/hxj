@@ -2,6 +2,7 @@ package com.example.test2.presentation.timetracking
 
 import androidx.compose.ui.graphics.Color
 import com.example.test2.data.model.TimeCategory
+import com.example.test2.data.model.TimeEntry
 
 /**
  * 时间追踪工具类
@@ -46,8 +47,17 @@ object TimeTrackingUtils {
             val category = TimeCategory.valueOf(categoryName.uppercase())
             getCategoryColor(category)
         } catch (e: IllegalArgumentException) {
-            // 默认返回灰色
-            Color(0xFF9E9E9E)
+            // 尝试匹配常见标签颜色
+            when (categoryName.lowercase()) {
+                "学习", "study", "learning" -> Color(0xFF0F9D58)  // 绿色
+                "工作", "work", "job" -> Color(0xFF4285F4)        // 蓝色
+                "运动", "exercise", "workout" -> Color(0xFFF4B400) // 黄色
+                "休闲", "leisure", "relax" -> Color(0xFF7986CB)    // 淡紫色
+                "阅读", "reading", "book" -> Color(0xFF9C27B0)     // 紫色
+                "创意", "creative" -> Color(0xFFE91E63)            // 粉色
+                "个人发展", "personal" -> Color(0xFF3F51B5)        // 靛蓝色
+                else -> Color(0xFF9E9E9E)                         // 默认灰色
+            }
         }
     }
     
@@ -66,5 +76,22 @@ object TimeTrackingUtils {
             TimeCategory.FOCUS -> "专注"
             TimeCategory.OTHER -> "其他"
         }
+    }
+    
+    /**
+     * 获取时间条目的显示分类
+     * 优先使用标签，如果没有标签则使用分类
+     * 
+     * @param timeEntry 时间条目
+     * @return 显示分类名称
+     */
+    fun getDisplayCategory(timeEntry: TimeEntry): String {
+        // 如果有标签，优先使用第一个标签
+        if (timeEntry.tags.isNotEmpty()) {
+            return timeEntry.tags.first()
+        }
+        
+        // 否则使用分类名称
+        return getCategoryName(timeEntry.category)
     }
 } 

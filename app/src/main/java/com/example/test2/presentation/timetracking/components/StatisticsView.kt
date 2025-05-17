@@ -41,6 +41,7 @@ import com.example.test2.data.model.TimeCategory
 import com.example.test2.presentation.timetracking.TimeTrackingState
 import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import com.example.test2.presentation.timetracking.TimeStatistics
+import com.example.test2.data.model.PomodoroTag
 
 /**
  * 时间统计视图，用于显示时间分配情况
@@ -357,10 +358,17 @@ fun CategoryLegend(
  */
 private fun getCategoryDisplayName(categoryName: String): String {
     return try {
+        // 先尝试解析为 TimeCategory
         val category = TimeCategory.valueOf(categoryName)
         TimeTrackingUtils.getCategoryName(category)
     } catch (e: Exception) {
-        categoryName // 如果无法解析，则直接返回原名称
+        try {
+            // 如果不是 TimeCategory，尝试解析为 PomodoroTag
+            val pomodoroTag = PomodoroTag.valueOf(categoryName)
+            pomodoroTag.getDisplayName()
+        } catch (e: Exception) {
+            categoryName // 如果无法解析，则直接返回原名称
+        }
     }
 }
 

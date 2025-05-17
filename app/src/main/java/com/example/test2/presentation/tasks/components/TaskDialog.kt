@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -77,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.test2.data.model.CheckInFrequencyType
@@ -108,7 +110,8 @@ import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.TagCategory
 import kotlinx.coroutines.launch
 import java.util.UUID
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * 任务数据模型 - 用于传递任务编辑信息
@@ -153,12 +156,12 @@ fun TaskDialog(
     viewModel: TaskManagerViewModel
 ) {
     // 表单状态 - 优先使用editorState中的值，其次是taskEntity中的值
-    var title by remember { mutableStateOf(editorState.newTaskTitle.ifEmpty { taskEntity?.title ?: "" }) }
-    var description by remember { mutableStateOf(editorState.newTaskDescription.ifEmpty { taskEntity?.description ?: "" }) }
-    var taskType by remember { mutableStateOf(editorState.newTaskType) }
-    var priority by remember { mutableStateOf(editorState.newTaskPriority) }
-    var dueDate by remember { mutableStateOf(editorState.newTaskDueDate ?: taskEntity?.dueDate ?: Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) }
-    var selectedGoalId by remember { mutableStateOf(editorState.newTaskGoalId ?: taskEntity?.goalId) }
+    var title by remember { mutableStateOf(taskEntity?.title ?: editorState.newTaskTitle) }
+    var description by remember { mutableStateOf(taskEntity?.description ?: editorState.newTaskDescription) }
+    var taskType by remember { mutableStateOf(taskEntity?.getTaskTypeEnum() ?: editorState.newTaskType) }
+    var priority by remember { mutableStateOf(taskEntity?.getPriorityEnum() ?: editorState.newTaskPriority) }
+    var dueDate by remember { mutableStateOf(taskEntity?.dueDate ?: editorState.newTaskDueDate ?: Date()) }
+    var selectedGoalId by remember { mutableStateOf(taskEntity?.goalId ?: editorState.newTaskGoalId) }
     
     // 打卡任务设置
     var checkInFrequencyType by remember { mutableStateOf(editorState.newCheckInFrequencyType) }
@@ -179,19 +182,23 @@ fun TaskDialog(
     
     // 从任务实体中初始化提醒时间
     LaunchedEffect(taskEntity) {
-        if (taskEntity != null && taskType == TaskType.CHECK_IN) {
-            // 使用viewModel中的方法获取打卡任务信息
-            viewModel.loadCheckInTaskForInitialization(taskEntity.id) { checkInTask ->
-                checkInTask?.let { task ->
-                    if (task.reminderEnabled && task.reminderTime != null) {
-                        val calendar = Calendar.getInstance().apply { time = task.reminderTime }
-                        dailyDeadlineHour = calendar.get(Calendar.HOUR_OF_DAY)
-                        dailyDeadlineMinute = calendar.get(Calendar.MINUTE)
-                        hasDailyDeadline = true
+        // 监听 taskType 的变化
+        snapshotFlow { taskType }
+            .collectLatest { currentTaskType ->
+                if (taskEntity != null && currentTaskType == TaskType.CHECK_IN) {
+                    // 使用viewModel中的方法获取打卡任务信息
+                    viewModel.loadCheckInTaskForInitialization(taskEntity.id) { checkInTask ->
+                        checkInTask?.let { task ->
+                            if (task.reminderEnabled && task.reminderTime != null) {
+                                val calendar = Calendar.getInstance().apply { time = task.reminderTime }
+                                dailyDeadlineHour = calendar.get(Calendar.HOUR_OF_DAY)
+                                dailyDeadlineMinute = calendar.get(Calendar.MINUTE)
+                                hasDailyDeadline = true
+                            }
+                        }
                     }
                 }
             }
-        }
     }
     
     // 番茄钟任务设置
@@ -202,7 +209,7 @@ fun TaskDialog(
     var pomodoroTagId by remember { mutableStateOf(editorState.newPomodoroTagId) }
     
     // 日期格式化器（移除旧的，使用DateTimeUtil）
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val  timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()) }
     val dateTimeFormatter = remember { SimpleDateFormat("yyyy年MM月dd日 HH:mm", Locale.getDefault()) }
     
@@ -436,69 +443,145 @@ fun TaskDialog(
                         contentDescription = "选择优先级",
                         tint = Color.Gray
                     )
+                }
+                
+                // 目标选择
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 获取目标列表
+                val goals by viewModel.getAllGoals().collectAsState(initial = emptyList())
+                var goalMenuExpanded by remember { mutableStateOf(false) }
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { goalMenuExpanded = true },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = "关联目标",
+                        tint = PrimaryLight,
+                        modifier = Modifier.size(24.dp)
+                    )
                     
-                    // 优先级下拉菜单
-                    DropdownMenu(
-                        expanded = priorityMenuExpanded,
-                        onDismissRequest = { priorityMenuExpanded = false }
-                    ) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = if (selectedGoalId != null) {
+                            val selectedGoal = goals.find { it.id == selectedGoalId }
+                            "关联目标: ${selectedGoal?.title ?: "未知目标"}"
+                        } else {
+                            "关联目标: 无"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "选择目标",
+                        tint = Color.Gray
+                    )
+                }
+                
+                // 目标选择下拉菜单
+                DropdownMenu(
+                    expanded = goalMenuExpanded,
+                    onDismissRequest = { goalMenuExpanded = false },
+                    modifier = Modifier
+                        .width(300.dp)
+                        .heightIn(max = 300.dp)
+                ) {
+                    // 添加"无"选项
+                    DropdownMenuItem(
+                        text = { Text("无") },
+                        onClick = {
+                            selectedGoalId = null
+                            goalMenuExpanded = false
+                        }
+                    )
+                    
+                    // 添加目标列表
+                    goals.forEach { goal ->
                         DropdownMenuItem(
                             text = { 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF8BC34A))
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("低优先级") 
-                                }
+                                Text(
+                                    text = goal.title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             },
-                            onClick = { 
-                                priority = EntityTaskPriority.LOW
-                                priorityMenuExpanded = false
-                            }
-                        )
-                        
-                        DropdownMenuItem(
-                            text = { 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF4FC3F7))
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("中优先级") 
-                                }
-                            },
-                            onClick = { 
-                                priority = EntityTaskPriority.MEDIUM
-                                priorityMenuExpanded = false
-                            }
-                        )
-                        
-                        DropdownMenuItem(
-                            text = { 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFFFF9800))
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("高优先级") 
-                                }
-                            },
-                            onClick = { 
-                                priority = EntityTaskPriority.HIGH
-                                priorityMenuExpanded = false
+                            onClick = {
+                                selectedGoalId = goal.id
+                                goalMenuExpanded = false
                             }
                         )
                     }
+                }
+                
+                // 优先级下拉菜单
+                DropdownMenu(
+                    expanded = priorityMenuExpanded,
+                    onDismissRequest = { priorityMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF8BC34A))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("低优先级") 
+                            }
+                        },
+                        onClick = { 
+                            priority = EntityTaskPriority.LOW
+                            priorityMenuExpanded = false
+                        }
+                    )
+                    
+                    DropdownMenuItem(
+                        text = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF4FC3F7))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("中优先级") 
+                            }
+                        },
+                        onClick = { 
+                            priority = EntityTaskPriority.MEDIUM
+                            priorityMenuExpanded = false
+                        }
+                    )
+                    
+                    DropdownMenuItem(
+                        text = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFF9800))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("高优先级") 
+                            }
+                        },
+                        onClick = { 
+                            priority = EntityTaskPriority.HIGH
+                            priorityMenuExpanded = false
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

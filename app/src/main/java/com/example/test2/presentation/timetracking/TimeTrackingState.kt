@@ -1,5 +1,6 @@
 package com.example.test2.presentation.timetracking
 
+import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.timetracking.TimeGoalEntity
 import com.example.test2.data.local.entity.timetracking.TimeTagEntity
 import com.example.test2.data.model.Task
@@ -27,6 +28,8 @@ data class TimeTrackingState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val showEntryDialog: Boolean = false,
+    val showTagDialog: Boolean = false,
+    val selectedTag: TaskTagEntity? = null,
     val statistics: TimeStatistics = TimeStatistics(),
     
     // 番茄钟相关状态

@@ -1,5 +1,6 @@
 package com.example.test2.presentation.timetracking
 
+import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
 import java.util.Date
@@ -52,12 +53,17 @@ sealed class TimeTrackingEvent {
     /**
      * 选择时间条目
      */
-    data class SelectTimeEntry(val timeEntry: TimeEntry) : TimeTrackingEvent()
+    data class SelectTimeEntry(val timeEntry: TimeEntry?) : TimeTrackingEvent()
     
     /**
      * 显示编辑时间条目对话框
      */
-    data class ShowEditEntryDialog(val timeEntry: TimeEntry) : TimeTrackingEvent()
+    data class ShowEditEntryDialog(val timeEntry: TimeEntry?) : TimeTrackingEvent()
+    
+    /**
+     * 显示标签对话框
+     */
+    data class ShowTagDialog(val tag: TaskTagEntity?) : TimeTrackingEvent()
     
     /**
      * 关闭对话框
@@ -67,5 +73,5 @@ sealed class TimeTrackingEvent {
     /**
      * 计算统计数据
      */
-    data object CalculateStatistics : TimeTrackingEvent()
+    object CalculateStatistics : TimeTrackingEvent()
 } 

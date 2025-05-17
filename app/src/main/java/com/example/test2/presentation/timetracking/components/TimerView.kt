@@ -1,22 +1,40 @@
 package com.example.test2.presentation.timetracking.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,9 +42,11 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,11 +57,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.test2.data.local.entity.TagCategory
+import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
+import com.example.test2.presentation.common.LocalTimeTrackingViewModel
 import com.example.test2.presentation.theme.PrimaryLight
+import com.example.test2.presentation.timetracking.TimeTrackingEvent
 import com.example.test2.presentation.timetracking.TimeTrackingUtils
 import kotlinx.coroutines.delay
 import java.util.Date
@@ -57,8 +82,17 @@ fun TimerView(
     onStartTimer: (TimeEntry) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 获取ViewModel
+    val viewModel = LocalTimeTrackingViewModel.current
+    val state by viewModel.state.collectAsState()
+    val taskTags by viewModel.taskTags.collectAsState(initial = emptyList())
+    
     var seconds by remember { mutableLongStateOf(0L) }
     var isRunning by remember { mutableStateOf(ongoingEntry != null) }
+    var showTagOptions by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf(TimeCategory.WORK) }
+    var activityTitle by remember { mutableStateOf("") }
+    var selectedTagId by remember { mutableStateOf<String?>(null) }
     
     // 计算已经运行的时间
     LaunchedEffect(ongoingEntry) {
@@ -91,7 +125,7 @@ fun TimerView(
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
+            defaultElevation = 4.dp
         )
     ) {
         Column(
@@ -100,41 +134,50 @@ fun TimerView(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (ongoingEntry != null) {
-                // 显示正在追踪的活动信息
+            if (isRunning) {
+                // 显示正在进行的时间条目
                 Text(
-                    text = "正在追踪",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    text = ongoingEntry?.title ?: "正在计时...",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                Text(
-                    text = ongoingEntry.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                ongoingEntry.description?.let { desc ->
-                    Text(
-                        text = desc,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
+                // 显示标签（如果有）
+                if (ongoingEntry?.tagId != null) {
+                    val tag = taskTags.find { it.id == ongoingEntry.tagId }
+                    if (tag != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(tag.color))
+                            )
+                            
+                            Spacer(modifier = Modifier.width(4.dp))
+                            
+                            Text(
+                                text = tag.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
                 }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
-                // 分类标签
-                CategoryChip(category = ongoingEntry.category)
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 计时器显示
+                // 时间显示
                 Text(
                     text = formattedTime,
-                    fontSize = 42.sp,
+                    style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryLight
                 )
@@ -143,127 +186,150 @@ fun TimerView(
                 
                 // 停止按钮
                 FloatingActionButton(
-                    onClick = { onStopTimer() },
-                    containerColor = PrimaryLight,
-                    contentColor = Color.White,
-                    modifier = Modifier.size(56.dp)
+                    onClick = onStopTimer,
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = Color.White
                 ) {
                     Icon(
                         imageVector = Icons.Default.Stop,
-                        contentDescription = "停止计时",
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = "停止"
                     )
                 }
             } else {
-                // 显示未开始追踪的提示
-                Text(
-                    text = "开始追踪你的时间",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                // 创建新的时间条目
+                OutlinedTextField(
+                    value = activityTitle,
+                    onValueChange = { activityTitle = it },
+                    label = { Text("你在做什么？") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 快速启动按钮
-                QuickStartButtons(onStartTimer = onStartTimer)
-            }
-        }
-    }
-}
-
-/**
- * 分类标签组件
- */
-@Composable
-fun CategoryChip(
-    category: TimeCategory,
-    modifier: Modifier = Modifier
-) {
-    val (backgroundColor, textColor) = TimeTrackingUtils.getCategoryColors(category)
-    
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor.copy(alpha = 0.1f))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = TimeTrackingUtils.getCategoryName(category),
-            color = textColor,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-/**
- * 快速启动按钮组
- */
-@Composable
-fun QuickStartButtons(
-    onStartTimer: (TimeEntry) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val quickCategories = listOf(
-        TimeCategory.WORK,
-        TimeCategory.STUDY,
-        TimeCategory.EXERCISE
-    )
-    
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            quickCategories.forEach { category ->
-                QuickStartButton(
-                    category = category,
+                // 分类选择
+                Text(
+                    text = "选择分类",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 分类选项
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TimeCategory.values().forEach { category ->
+                        CategoryOption(
+                            category = category,
+                            isSelected = selectedCategory == category,
+                            onClick = { selectedCategory = category }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 显示或隐藏标签选项的按钮
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTagOptions = !showTagOptions }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "添加标签",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Icon(
+                        imageVector = if (showTagOptions) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (showTagOptions) "隐藏标签" else "显示标签"
+                    )
+                }
+                
+                // 标签选项
+                AnimatedVisibility(
+                    visible = showTagOptions,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    CustomTagOptions(
+                        tags = taskTags,
+                        selectedTagId = selectedTagId,
+                        onTagSelected = { selectedTagId = it },
+                        onAddNewTag = { viewModel.onEvent(TimeTrackingEvent.ShowTagDialog(null)) }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // 开始计时按钮
+                FloatingActionButton(
                     onClick = {
-                        val title = getDefaultTitleForCategory(category)
+                        val title = if (activityTitle.isBlank()) "未命名时间记录" else activityTitle
                         val timeEntry = TimeEntry(
                             title = title,
-                            category = category,
-                            startTime = Date()
+                            startTime = Date(),
+                            category = selectedCategory,
+                            tagId = selectedTagId
                         )
                         onStartTimer(timeEntry)
-                    }
-                )
+                    },
+                    containerColor = PrimaryLight,
+                    contentColor = Color.White
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "开始"
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * 快速启动单个按钮
+ * 分类选项
  */
 @Composable
-fun QuickStartButton(
+private fun CategoryOption(
     category: TimeCategory,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
-    val (backgroundColor, _) = TimeTrackingUtils.getCategoryColors(category)
-    
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.padding(8.dp)
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .clickable(onClick = onClick)
     ) {
-        IconButton(
-            onClick = onClick,
+        Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .clip(CircleShape)
-                .background(backgroundColor.copy(alpha = 0.1f))
+                .background(TimeTrackingUtils.getCategoryColor(category).copy(alpha = if (isSelected) 1f else 0.6f))
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "开始 ${TimeTrackingUtils.getCategoryName(category)}",
-                tint = backgroundColor,
-                modifier = Modifier.size(24.dp)
-            )
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(4.dp))
@@ -271,32 +337,122 @@ fun QuickStartButton(
         Text(
             text = TimeTrackingUtils.getCategoryName(category),
             style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
 
 /**
- * 获取分类的默认标题
+ * 自定义标签选项
  */
-private fun getDefaultTitleForCategory(category: TimeCategory): String {
-    return when (category) {
-        TimeCategory.WORK -> "工作任务"
-        TimeCategory.STUDY -> "学习时间"
-        TimeCategory.EXERCISE -> "锻炼时间"
-        TimeCategory.LEISURE -> "休闲时间"
-        TimeCategory.FOCUS -> "专注时间"
-        TimeCategory.OTHER -> "其他活动"
+@Composable
+private fun CustomTagOptions(
+    tags: List<TaskTagEntity>,
+    selectedTagId: String?,
+    onTagSelected: (String?) -> Unit,
+    onAddNewTag: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            contentPadding = PaddingValues(4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 120.dp)
+        ) {
+            // 添加新标签的选项
+            item {
+                CustomTagItem(
+                    tag = null,
+                    isSelected = false,
+                    onClick = onAddNewTag
+                )
+            }
+            
+            // 现有标签
+            items(tags) { tag ->
+                CustomTagItem(
+                    tag = tag,
+                    isSelected = tag.id == selectedTagId,
+                    onClick = { onTagSelected(if (tag.id == selectedTagId) null else tag.id) }
+                )
+            }
+        }
     }
 }
 
 /**
- * 格式化时间为小时:分钟:秒
+ * 自定义标签项
+ */
+@Composable
+private fun CustomTagItem(
+    tag: TaskTagEntity?,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .padding(4.dp)
+            .height(40.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (tag == null) 
+                    MaterialTheme.colorScheme.surfaceVariant 
+                else 
+                    Color(tag.color).copy(alpha = if (isSelected) 1f else 0.6f)
+            )
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (tag == null) {
+            // 添加新标签
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "添加新标签",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            // 显示标签名称
+            Text(
+                text = tag.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isLightColor(Color(tag.color))) Color.Black else Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/**
+ * 判断颜色是否为浅色
+ */
+private fun isLightColor(color: Color): Boolean {
+    val darkness = 1 - (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
+    return darkness < 0.5
+}
+
+/**
+ * 格式化时间显示
  */
 private fun formatTime(seconds: Long): String {
     val hours = seconds / 3600
     val minutes = (seconds % 3600) / 60
     val secs = seconds % 60
     
-    return String.format("%02d:%02d:%02d", hours, minutes, secs)
-} 
+    return if (hours > 0) {
+        String.format("%02d:%02d:%02d", hours, minutes, secs)
+    } else {
+        String.format("%02d:%02d", minutes, secs)
+    }
+}

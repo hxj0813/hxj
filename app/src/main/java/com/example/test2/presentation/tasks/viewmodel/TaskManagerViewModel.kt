@@ -9,12 +9,15 @@ import com.example.test2.data.local.entity.TaskLogEntity
 import com.example.test2.data.local.entity.TaskPriority
 import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.TaskType
+import com.example.test2.data.model.Goal
 import com.example.test2.data.repository.CheckInTaskRepository
+import com.example.test2.data.repository.GoalRepository
 import com.example.test2.data.repository.PomodoroTaskRepository
 import com.example.test2.data.repository.TaskLogRepository
 import com.example.test2.data.repository.TaskRepository
 import com.example.test2.data.repository.TaskTagRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -119,7 +122,8 @@ class TaskManagerViewModel @Inject constructor(
     private val checkInTaskRepository: CheckInTaskRepository,
     private val pomodoroTaskRepository: PomodoroTaskRepository,
     private val taskTagRepository: TaskTagRepository,
-    private val taskLogRepository: TaskLogRepository
+    private val taskLogRepository: TaskLogRepository,
+    private val goalRepository: GoalRepository
 ) : ViewModel() {
     
     // 任务列表状态
@@ -280,6 +284,9 @@ class TaskManagerViewModel @Inject constructor(
                 // 重置编辑器状态
                 _taskEditorState.value = TaskEditorState()
                 
+                // 刷新统计数据
+                loadTaskCounts()
+                
             } catch (e: Exception) {
                 _taskListState.value = _taskListState.value.copy(
                     error = "创建任务失败: ${e.message}"
@@ -439,6 +446,9 @@ class TaskManagerViewModel @Inject constructor(
                     
                     // 删除基础任务
                     taskRepository.deleteTask(task)
+                    
+                    // 刷新统计数据
+                    loadTaskCounts()
                 }
             } catch (e: Exception) {
                 _taskListState.value = _taskListState.value.copy(
@@ -477,6 +487,9 @@ class TaskManagerViewModel @Inject constructor(
                         }
                     }
                 }
+                
+                // 刷新统计数据
+                loadTaskCounts()
             } catch (e: Exception) {
                 _taskListState.value = _taskListState.value.copy(
                     error = "完成任务失败: ${e.message}"
@@ -499,6 +512,9 @@ class TaskManagerViewModel @Inject constructor(
                     // 更新打卡任务状态
                     checkInTaskRepository.updateTaskCompletion(taskId, false)
                 }
+                
+                // 刷新统计数据
+                loadTaskCounts()
             } catch (e: Exception) {
                 _taskListState.value = _taskListState.value.copy(
                     error = "取消完成任务失败: ${e.message}"
@@ -610,17 +626,38 @@ class TaskManagerViewModel @Inject constructor(
                 // 获取今日已完成任务数量
                 val todayCompletedCount = taskLogRepository.getTodayCompletedTaskCount()
                 
+                // 直接从当前任务列表中获取今天到期的任务数量
+                val activeTasks = taskRepository.getActiveTasks()
+                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+                    .value
+                
+                // 计算今天已经完成和今天到期的任务总数
+                val todayDueTasksCount = activeTasks.count { task ->
+                    val dueDate = task.dueDate
+                    if (dueDate != null) {
+                        val dueCalendar = Calendar.getInstance().apply { time = dueDate }
+                        val today = Calendar.getInstance()
+                        
+                        dueCalendar.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                        dueCalendar.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
+                    } else false
+                }
+                
+                // 合并今天完成的和今天到期的任务数量
+                val todayTasksTotal = todayCompletedCount + todayDueTasksCount
+                
                 // 获取逾期任务数量
                 val overdueTasksCount = taskRepository.getOverdueTasks()
                     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
                     .value.size
                 
                 _taskListState.value = _taskListState.value.copy(
-                    todayTasksCount = todayCompletedCount,
+                    todayTasksCount = todayTasksTotal,
                     overdueTasksCount = overdueTasksCount
                 )
             } catch (e: Exception) {
                 // 忽略统计加载错误
+                println("统计加载错误: ${e.message}")
             }
         }
     }
@@ -946,5 +983,13 @@ class TaskManagerViewModel @Inject constructor(
                 )
             }
         }
+    }
+    
+    /**
+     * 获取所有目标
+     * @return 目标列表Flow
+     */
+    fun getAllGoals(): Flow<List<Goal>> {
+        return goalRepository.getAllGoals()
     }
 } 

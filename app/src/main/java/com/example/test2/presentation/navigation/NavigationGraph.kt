@@ -49,7 +49,11 @@ import com.example.test2.presentation.timetracking.TimeTrackingScreen
 sealed class NavRoute(val route: String) {
     // 主要页面路由
     object Home : NavRoute("home")
-    object Tasks : NavRoute("tasks")
+    object Tasks : NavRoute("tasks?goalId={goalId}") {
+        fun createRoute(goalId: Long? = null): String {
+            return if (goalId != null) "tasks?goalId=$goalId" else "tasks"
+        }
+    }
     object TimeTracking : NavRoute("time_tracking")
     object Goals : NavRoute("goals")
     object Habits : NavRoute("habits")
@@ -175,14 +179,26 @@ fun AppNavigationGraph(
             // }
             
             // 任务列表
-            composable(route = NavRoute.Tasks.route) {
+            composable(
+                route = NavRoute.Tasks.route,
+                arguments = listOf(
+                    navArgument("goalId") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                        nullable = false
+                    }
+                )
+            ) { entry ->
+                val goalId = entry.arguments?.getLong("goalId") ?: -1L
+                
                 TasksScreen(
                     onNavigateToDetail = { taskId ->
                         navController.navigate(NavRoute.TaskDetail.createRoute(taskId))
                     },
                     onNavigateToStatistics = {
                         navController.navigate(NavRoute.TaskStatistics.route)
-                    }
+                    },
+                    initialGoalId = if (goalId != -1L) goalId else null
                 )
             }
             
@@ -257,7 +273,7 @@ fun AppNavigationGraph(
             
             // 目标管理
             composable(route = NavRoute.Goals.route) {
-                GoalsScreen()
+                GoalsScreen(navController = navController)
             }
             
             // 反思笔记（暂时使用NotesScreen）

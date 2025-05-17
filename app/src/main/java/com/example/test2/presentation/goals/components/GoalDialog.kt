@@ -66,6 +66,7 @@ import com.example.test2.presentation.theme.PrimaryLight
 import com.example.test2.util.DateTimeUtil
 import java.util.Calendar
 import java.util.Date
+import androidx.navigation.NavHostController
 
 
 
@@ -75,13 +76,15 @@ import java.util.Date
  * @param goal 要编辑的目标，如果为null则为添加新目标
  * @param onDismiss 取消回调
  * @param onSave 保存回调
+ * @param navController 导航控制器
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalDialog(
     goal: Goal? = null,
     onDismiss: () -> Unit,
-    onSave: (Goal) -> Unit
+    onSave: (Goal) -> Unit,
+    navController: NavHostController
 ) {
     // 目标表单状态
     var title by remember { mutableStateOf(goal?.title ?: "") }

@@ -198,7 +198,11 @@ fun PomodoroSessionScreen(
                 // 完成计时显示对话框
                 if (state.sessionCompleted) {
                     SessionCompletedDialog(
-                        onDismiss = { viewModel.acknowledgeSessionCompleted() },
+                        onDismiss = { 
+                            // 继续到休息状态
+                            viewModel.acknowledgeSessionCompleted()
+                            viewModel.startBreak()
+                        },
                         onSaveAndFinish = {
                             viewModel.saveSession()
                             onFinish()
@@ -360,10 +364,13 @@ private fun SessionCompletedDialog(
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF98FF98)
+                )
             ) {
-                Text("关闭")
+                Text("继续休息")
             }
         }
     )

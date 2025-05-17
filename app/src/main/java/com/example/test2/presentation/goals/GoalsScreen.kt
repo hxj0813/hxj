@@ -56,6 +56,8 @@ import com.example.test2.data.model.Goal
 import com.example.test2.presentation.goals.components.GoalCard
 import com.example.test2.presentation.goals.components.GoalDialog
 import com.example.test2.presentation.theme.PrimaryLight
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 
 /**
  * 目标管理屏幕
@@ -63,7 +65,8 @@ import com.example.test2.presentation.theme.PrimaryLight
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GoalsScreen(
-    viewModel: GoalsViewModel = hiltViewModel()
+    viewModel: GoalsViewModel = hiltViewModel(),
+    navController: NavHostController = rememberNavController()
 ) {
     val state by viewModel.state.collectAsState()
     val lazyListState = rememberLazyListState()
@@ -231,7 +234,17 @@ fun GoalsScreen(
                                 } else {
                                     viewModel.onEvent(GoalsEvent.AddGoal(goal))
                                 }
-                            }
+                                
+                                // 如果用户选择了关联任务，跳转到任务创建界面
+                                if (goal.hasLinkedTask) {
+                                    // 关闭当前对话框
+                                    viewModel.onEvent(GoalsEvent.DismissDialog)
+                                    
+                                    // 跳转到任务创建界面，并传递目标ID
+                                    navController.navigate("tasks?goalId=${goal.id}")
+                                }
+                            },
+                            navController = navController
                         )
                     }
                 }

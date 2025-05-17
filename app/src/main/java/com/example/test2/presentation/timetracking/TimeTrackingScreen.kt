@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,8 +31,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
 import com.example.test2.presentation.timetracking.components.StatisticsView
+import com.example.test2.presentation.timetracking.components.TagDialog
 import com.example.test2.presentation.timetracking.components.TimeEntryCard
 import com.example.test2.presentation.timetracking.components.TimerView
 import com.example.test2.presentation.timetracking.TimeTrackingUtils
@@ -57,7 +62,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.navigation.NavController
-
+import androidx.compose.runtime.CompositionLocalProvider
+import com.example.test2.presentation.common.LocalTimeTrackingViewModel
+import kotlinx.coroutines.launch
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -76,131 +84,206 @@ fun TimeTrackingScreen(
         viewModel.onEvent(TimeTrackingEvent.LoadTasks)
     }
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("时间追踪") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
-                    titleContentColor = MaterialTheme.colorScheme.primary
-                ),
-                actions = {
-                    IconButton(onClick = { /* 显示日期选择器 */ showDatePicker = true }) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = "选择日期"
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-        ) {
-            // 计时器视图
-            TimerView(
-                ongoingEntry = state.ongoingEntry,
-                onStopTimer = {
-                    viewModel.onEvent(TimeTrackingEvent.StopTimeEntry())
-                },
-                onStartTimer = { timeEntry ->
-                    viewModel.onEvent(TimeTrackingEvent.StartTimeEntry(timeEntry))
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-            
-            // 统计视图
-            StatisticsView(
-                statistics = state.statistics,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-            
-            // 日期显示
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Text(
-                    text = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(state.selectedDate),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Medium
+    // 提供LocalTimeTrackingViewModel
+    CompositionLocalProvider(LocalTimeTrackingViewModel provides viewModel) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("时间追踪") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                        titleContentColor = MaterialTheme.colorScheme.primary
                     ),
-                    color = MaterialTheme.colorScheme.onBackground
+                    actions = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = "选择日期"
+                            )
+                        }
+                    }
                 )
             }
-            
-            Divider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-            
-            // 时间条目列表
-            if (state.isLoading) {
-                Box(
-                    contentAlignment = Alignment.Center,
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp)
+            ) {
+                // 计时器视图
+                TimerView(
+                    ongoingEntry = state.ongoingEntry,
+                    onStopTimer = {
+                        viewModel.onEvent(TimeTrackingEvent.StopTimeEntry())
+                    },
+                    onStartTimer = { timeEntry ->
+                        viewModel.onEvent(TimeTrackingEvent.StartTimeEntry(timeEntry))
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            } else if (state.timeEntries.isEmpty()) {
-                Box(
-                    contentAlignment = Alignment.Center,
+                        .padding(vertical = 8.dp)
+                )
+                
+                // 统计视图
+                StatisticsView(
+                    statistics = state.statistics,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .padding(vertical = 8.dp)
+                )
+                
+                // 日期显示
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 ) {
                     Text(
-                        text = "今天还没有时间记录",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        text = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(state.selectedDate),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    items(
-                        items = state.timeEntries,
-                        key = { it.id }
-                    ) { timeEntry ->
-                        TimeEntryCard(
-                            timeEntry = timeEntry,
-                            onClick = { 
-                                viewModel.onEvent(TimeTrackingEvent.SelectTimeEntry(timeEntry))
-                            },
-                            onEdit = {
-                                viewModel.onEvent(TimeTrackingEvent.ShowEditEntryDialog(timeEntry))
-                            },
-                            onDelete = {
-                                viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id))
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .animateItemPlacement()
+                
+                Divider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                
+                // 时间条目列表
+                if (state.isLoading) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
                         )
+                    }
+                } else if (state.timeEntries.isEmpty()) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        Text(
+                            text = "今天还没有时间记录",
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        items(
+                            items = state.timeEntries,
+                            key = { it.id }
+                        ) { timeEntry ->
+                            TimeEntryCard(
+                                timeEntry = timeEntry,
+                                onClick = { 
+                                    viewModel.onEvent(TimeTrackingEvent.SelectTimeEntry(timeEntry))
+                                },
+                                onEdit = {
+                                    viewModel.onEvent(TimeTrackingEvent.ShowEditEntryDialog(timeEntry))
+                                },
+                                onDelete = {
+                                    viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id))
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItemPlacement()
+                            )
+                        }
                     }
                 }
             }
+            
+            // 处理标签对话框
+            if (state.showTagDialog) {
+                TagDialog(
+                    tag = state.selectedTag,
+                    onDismiss = { viewModel.onEvent(TimeTrackingEvent.DismissDialog) },
+                    onSave = { tag ->
+                        // 保存标签
+                        viewModel.saveTag(tag)
+                        viewModel.onEvent(TimeTrackingEvent.DismissDialog)
+                    }
+                )
+            }
         }
+    }
+    
+    // 显示日期选择器
+    if (showDatePicker) {
+        ShowDatePicker(
+            initialDate = state.selectedDate,
+            onDateSelected = { selectedDate ->
+                viewModel.onEvent(TimeTrackingEvent.SelectDate(selectedDate))
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+}
+
+/**
+ * 日期选择器对话框
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShowDatePicker(
+    initialDate: Date,
+    onDateSelected: (Date) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate.time
+    )
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                val selectedDateMillis = datePickerState.selectedDateMillis
+                if (selectedDateMillis != null) {
+                    // 创建日历实例并设置日期
+                    val calendar = java.util.Calendar.getInstance().apply {
+                        timeInMillis = selectedDateMillis
+                        
+                        // 设置为当天的00:00:00，只关注日期
+                        set(java.util.Calendar.HOUR_OF_DAY, 0)
+                        set(java.util.Calendar.MINUTE, 0)
+                        set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    
+                    onDateSelected(calendar.time)
+                }
+            }) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
     }
 }
 

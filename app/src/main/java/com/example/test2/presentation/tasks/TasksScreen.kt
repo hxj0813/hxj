@@ -52,10 +52,23 @@ import java.util.*
 fun TasksScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToStatistics: () -> Unit,
+    initialGoalId: Long? = null,
     viewModel: TaskManagerViewModel = hiltViewModel()
 ) {
     val state by viewModel.combinedTaskState.collectAsState()
+    val editorState by viewModel.taskEditorState.collectAsState()
     val lazyListState = rememberLazyListState()
+    
+    // 如果有初始目标ID，自动打开任务创建对话框
+    LaunchedEffect(initialGoalId) {
+        if (initialGoalId != null) {
+            // 准备创建任务
+            viewModel.prepareCreateTask()
+            
+            // 设置关联目标
+            viewModel.setTaskEditorField("goalId", initialGoalId)
+        }
+    }
     
     // 颜色定义
     val gradientColors = listOf(Color(0xFF4A90E2), Color(0xFF357ABD))
@@ -306,9 +319,6 @@ fun TasksScreen(
                     }
                 )
             }
-            
-            // 获取编辑器状态
-            val editorState by viewModel.taskEditorState.collectAsState()
             
             // 显示任务表单对话框
             if (editorState.isShowingTaskForm) {

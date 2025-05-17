@@ -16,6 +16,7 @@ import java.util.UUID
  * @property taskId 关联的任务ID（可选）
  * @property goalId 关联的目标ID（可选）
  * @property tags 标签列表
+ * @property tagId 关联的标签ID（可选，用于与TaskTagEntity关联）
  * @property createdAt 创建时间
  */
 data class TimeEntry(
@@ -29,6 +30,7 @@ data class TimeEntry(
     val taskId: Long? = null,
     val goalId: Long? = null,
     val tags: List<String> = emptyList(),
+    val tagId: String? = null,
     val createdAt: Date = Date()
 ) {
     /**

@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.test2.data.local.entity.timetracking.TimeGoalEntity
 import com.example.test2.data.local.entity.timetracking.TimeTagEntity
+import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.model.Task
 import com.example.test2.data.model.TimeCategory
 import com.example.test2.data.model.TimeEntry
 import com.example.test2.data.repository.TimeTrackingRepository
 import com.example.test2.data.repository.PomodoroTaskRepository
 import com.example.test2.data.repository.TaskRepository
+import com.example.test2.data.repository.TaskTagRepository
 import com.example.test2.util.DateTimeUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -29,6 +31,7 @@ import com.example.test2.presentation.timetracking.TimeStatistics
 import com.example.test2.data.model.TaskType
 import com.example.test2.data.model.TaskPriority
 import com.example.test2.data.local.entity.PomodoroTaskEntity
+import com.example.test2.data.local.entity.TagCategory
 
 /**
  * 时间追踪ViewModel
@@ -38,7 +41,8 @@ import com.example.test2.data.local.entity.PomodoroTaskEntity
 class TimeTrackingViewModel @Inject constructor(
     private val repository: TimeTrackingRepository,
     private val pomodoroTaskRepository: PomodoroTaskRepository,
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val taskTagRepository: TaskTagRepository
 ) : ViewModel() {
     
     // UI状态
@@ -50,6 +54,9 @@ class TimeTrackingViewModel @Inject constructor(
     
     // 计时器Job
     private var timerJob: Job? = null
+    
+    // 标签状态
+    val taskTags = taskTagRepository.getAllTags()
     
     init {
         loadTimeEntries()
@@ -74,6 +81,7 @@ class TimeTrackingViewModel @Inject constructor(
             is TimeTrackingEvent.DeleteTimeEntry -> deleteTimeEntry(event.id)
             is TimeTrackingEvent.SelectTimeEntry -> selectTimeEntry(event.timeEntry)
             is TimeTrackingEvent.ShowEditEntryDialog -> showEditEntryDialog(event.timeEntry)
+            is TimeTrackingEvent.ShowTagDialog -> showTagDialog(event.tag)
             is TimeTrackingEvent.DismissDialog -> dismissDialog()
             is TimeTrackingEvent.CalculateStatistics -> calculateStatistics()
             else -> {} // 忽略不支持的事件
@@ -122,16 +130,7 @@ class TimeTrackingViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
             
             // 计算所选日期的起止时间
-            val calendar = Calendar.getInstance()
-            calendar.time = date
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            val startOfDay = calendar.time
-            
-            calendar.add(Calendar.DAY_OF_MONTH, 1)
-            val endOfDay = calendar.time
+            val (startOfDay, endOfDay) = getDateTimeRange(date)
             
             // 加载指定日期的时间条目
             repository.getTimeEntriesBetween(startOfDay, endOfDay).collect { entries ->
@@ -142,6 +141,9 @@ class TimeTrackingViewModel @Inject constructor(
                     )
                 }
             }
+            
+            // 加载所选日期的统计数据
+            loadStatisticsForRange(startOfDay, endOfDay)
         }
     }
     
@@ -186,6 +188,9 @@ class TimeTrackingViewModel @Inject constructor(
             
             // 更新状态
             _state.update { it.copy(ongoingEntry = timeEntry) }
+            
+            // 刷新统计数据
+            refreshCurrentDateStatistics()
         }
     }
     
@@ -208,6 +213,9 @@ class TimeTrackingViewModel @Inject constructor(
             
             // 更新关联的时间目标进度
             updateGoalsProgress(completedEntry)
+            
+            // 刷新统计数据
+            refreshCurrentDateStatistics()
         }
     }
     
@@ -224,6 +232,9 @@ class TimeTrackingViewModel @Inject constructor(
                     selectedEntry = null
                 )
             }
+            
+            // 刷新统计数据
+            refreshCurrentDateStatistics()
         }
     }
     
@@ -239,6 +250,9 @@ class TimeTrackingViewModel @Inject constructor(
                     selectedEntry = null
                 )
             }
+            
+            // 刷新统计数据
+            refreshCurrentDateStatistics()
         }
     }
     
@@ -246,7 +260,7 @@ class TimeTrackingViewModel @Inject constructor(
      * 选择时间条目
      * @param timeEntry 时间条目
      */
-    private fun selectTimeEntry(timeEntry: TimeEntry) {
+    private fun selectTimeEntry(timeEntry: TimeEntry?) {
         _state.update { it.copy(selectedEntry = timeEntry) }
     }
     
@@ -254,22 +268,37 @@ class TimeTrackingViewModel @Inject constructor(
      * 显示编辑时间条目对话框
      * @param timeEntry 时间条目
      */
-    private fun showEditEntryDialog(timeEntry: TimeEntry) {
+    private fun showEditEntryDialog(timeEntry: TimeEntry?) {
         _state.update { 
             it.copy(
-                showEntryDialog = true,
-                selectedEntry = timeEntry
+                selectedEntry = timeEntry,
+                showEntryDialog = true
             )
         }
     }
     
     /**
-     * 关闭对话框
+     * 显示标签对话框
+     */
+    private fun showTagDialog(tag: TaskTagEntity?) {
+        _state.update { 
+            it.copy(
+                selectedTag = tag,
+                showTagDialog = true
+            )
+        }
+    }
+    
+    /**
+     * 关闭所有对话框
      */
     private fun dismissDialog() {
         _state.update { 
             it.copy(
-                showEntryDialog = false
+                showEntryDialog = false,
+                showTagDialog = false,
+                selectedEntry = null,
+                selectedTag = null
             )
         }
     }
@@ -391,11 +420,18 @@ class TimeTrackingViewModel @Inject constructor(
                 .filter { it.category == TimeCategory.WORK || it.category == TimeCategory.STUDY }
                 .sumOf { it.duration }
             
-            // 按分类统计时间
+            // 按分类统计时间 - 优先使用标签，没有标签则使用分类
             val categoryBreakdown = entries
-                .groupBy { it.category }
+                .groupBy { entry -> 
+                    if (entry.tags.isNotEmpty()) {
+                        // 使用第一个标签作为分类
+                        entry.tags.first()
+                    } else {
+                        // 使用分类名称
+                        entry.category.name
+                    }
+                }
                 .mapValues { (_, entries) -> entries.sumOf { it.duration } }
-                .mapKeys { it.key.name } // 转换为 Map<String, Long>
             
             // 计算最常用的分类
             val mostTrackedCategory = entries
@@ -596,9 +632,16 @@ class TimeTrackingViewModel @Inject constructor(
     }
     
     /**
+     * 开始休息时间（公共方法）
+     */
+    fun startBreak() {
+        startBreakPrivate()
+    }
+
+    /**
      * 开始休息时间
      */
-    private fun startBreak() {
+    private fun startBreakPrivate() {
         timerJob?.cancel()
         
         val currentState = _state.value
@@ -672,7 +715,7 @@ class TimeTrackingViewModel @Inject constructor(
             } else {
                 // 工作时间结束，开始休息时间
                 if (_state.value.currentSession < _state.value.totalSessions) {
-                    startBreak()
+                    startBreakPrivate()
                 } else {
                     // 最后一个番茄钟完成
                     _state.update { 
@@ -786,6 +829,49 @@ class TimeTrackingViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
+                // 获取番茄钟任务信息
+                val pomodoroTask = pomodoroTaskRepository.getPomodoroTaskById(task.id.toString())
+                
+                // 确定分类 - 如果有番茄钟任务，则使用其标签；否则使用默认的学习分类
+                val category = if (pomodoroTask != null && pomodoroTask.tagId != null) {
+                    // 尝试获取标签对应的分类
+                    try {
+                        // 根据标签分类获取对应的 PomodoroTag
+                        val tagCategory = pomodoroTask.getTagCategoryEnum()
+                        when (tagCategory) {
+                            TagCategory.STUDY -> TimeCategory.STUDY
+                            TagCategory.EXERCISE -> TimeCategory.EXERCISE
+                            TagCategory.WORK -> TimeCategory.WORK
+                            else -> TimeCategory.STUDY // 默认为学习
+                        }
+                    } catch (e: Exception) {
+                        TimeCategory.STUDY // 出错时默认为学习
+                    }
+                } else {
+                    TimeCategory.STUDY // 没有番茄钟任务或标签时默认为学习
+                }
+                
+                // 获取任务标签名称
+                val tagName = if (pomodoroTask != null) {
+                    if (!pomodoroTask.customTagName.isNullOrBlank()) {
+                        // 如果有自定义标签名称，优先使用
+                        pomodoroTask.customTagName
+                    } else if (pomodoroTask.tagId != null) {
+                        // 尝试从数据库获取标签名称
+                        try {
+                            val tag = taskTagRepository.getTagById(pomodoroTask.tagId)
+                            tag?.name
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } else {
+                        // 使用分类名称作为标签
+                        pomodoroTask.getTagCategoryEnum().name
+                    }
+                } else {
+                    null
+                }
+                
                 // 创建时间条目
                 val timeEntry = TimeEntry(
                     id = 0,
@@ -794,16 +880,15 @@ class TimeTrackingViewModel @Inject constructor(
                     startTime = Date(System.currentTimeMillis() - _state.value.totalTimeInSeconds * 1000),
                     endTime = Date(),
                     duration = _state.value.totalTimeInSeconds.toLong(),
-                    category = TimeCategory.STUDY,
+                    category = category, // 使用确定的分类
                     taskId = task.id,
-                    tags = listOf()
+                    tags = if (tagName != null) listOf(tagName) else listOf() // 将任务标签名称添加到标签列表
                 )
                 
                 // 保存时间条目
                 repository.saveTimeEntry(timeEntry)
                 
                 // 更新番茄钟任务完成情况
-                val pomodoroTask = pomodoroTaskRepository.getPomodoroTaskById(task.id.toString())
                 if (pomodoroTask != null) {
                     // 计算专注时间（分钟）
                     val focusMinutes = _state.value.currentSession * pomodoroTask.pomodoroLength
@@ -817,14 +902,6 @@ class TimeTrackingViewModel @Inject constructor(
                     
                     // 检查任务是否已完成所有预计的番茄钟
                     checkAndUpdateTaskCompletion(pomodoroTask)
-                    
-                    // 记录标签信息
-                    val tagId = pomodoroTask.tagId
-                    if (tagId != null) {
-                        // 如果有标签，将标签ID添加到时间条目中
-                        // 在实际应用中，您可能需要使用TimeEntryTagCrossRef或其他方式关联标签
-                        // 此处简化处理
-                    }
                 }
                 
                 // 重置状态
@@ -868,5 +945,63 @@ class TimeTrackingViewModel @Inject constructor(
      */
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+    
+    /**
+     * 计算指定日期的起止时间范围
+     * @param date 指定日期
+     * @return 包含起止时间的Pair
+     */
+    private fun getDateTimeRange(date: Date): Pair<Date, Date> {
+        val calendar = Calendar.getInstance().apply { time = date }
+        val startOfDay = calendar.clone() as Calendar
+        startOfDay.set(Calendar.HOUR_OF_DAY, 0)
+        startOfDay.set(Calendar.MINUTE, 0)
+        startOfDay.set(Calendar.SECOND, 0)
+        startOfDay.set(Calendar.MILLISECOND, 0)
+        
+        val endOfDay = calendar.clone() as Calendar
+        endOfDay.set(Calendar.HOUR_OF_DAY, 23)
+        endOfDay.set(Calendar.MINUTE, 59)
+        endOfDay.set(Calendar.SECOND, 59)
+        endOfDay.set(Calendar.MILLISECOND, 999)
+        
+        return Pair(startOfDay.time, endOfDay.time)
+    }
+    
+    /**
+     * 刷新当前选择日期的统计数据
+     */
+    private fun refreshCurrentDateStatistics() {
+        viewModelScope.launch {
+            // 刷新总体统计数据
+            loadStatistics()
+            
+            // 刷新当前选择日期的统计数据
+            val (startOfDay, endOfDay) = getDateTimeRange(_state.value.selectedDate)
+            loadStatisticsForRange(startOfDay, endOfDay)
+        }
+    }
+    
+    /**
+     * 保存标签
+     */
+    fun saveTag(tag: TaskTagEntity) {
+        viewModelScope.launch {
+            try {
+                if (tag.id.isNotEmpty()) {
+                    // 更新现有标签
+                    taskTagRepository.updateTag(tag)
+                } else {
+                    // 创建新标签
+                    taskTagRepository.createTag(tag)
+                }
+            } catch (e: Exception) {
+                // 处理错误
+                _state.update { 
+                    it.copy(error = "保存标签时出错: ${e.message}") 
+                }
+            }
+        }
     }
 } 

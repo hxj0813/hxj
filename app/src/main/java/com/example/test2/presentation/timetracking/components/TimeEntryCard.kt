@@ -54,6 +54,13 @@ fun TimeEntryCard(
     val startTime = dateFormatter.format(timeEntry.startTime)
     val endTime = timeEntry.endTime?.let { dateFormatter.format(it) } ?: "进行中"
     
+    // 获取显示分类（优先使用标签）
+    val displayCategory = if (timeEntry.tags.isNotEmpty()) {
+        timeEntry.tags.first()
+    } else {
+        TimeTrackingUtils.getCategoryName(timeEntry.category)
+    }
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -73,7 +80,14 @@ fun TimeEntryCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 分类颜色指示器
-            val (backgroundColor, _) = TimeTrackingUtils.getCategoryColors(timeEntry.category)
+            val backgroundColor = if (timeEntry.tags.isNotEmpty()) {
+                // 如果有标签，使用标签颜色
+                TimeTrackingUtils.getCategoryColor(timeEntry.tags.first())
+            } else {
+                // 否则使用分类颜色
+                TimeTrackingUtils.getCategoryColor(timeEntry.category)
+            }
+            
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -111,8 +125,8 @@ fun TimeEntryCard(
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
-                    // 分类标签
-                    CategoryChip(category = timeEntry.category)
+                    // 分类标签 - 使用显示分类
+                    CategoryChip(displayName = displayCategory, backgroundColor = backgroundColor)
                 }
                 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -187,6 +201,34 @@ fun TimeEntryCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * 分类标签组件
+ */
+@Composable
+fun CategoryChip(
+    category: TimeCategory? = null,
+    displayName: String? = null,
+    backgroundColor: Color? = null,
+    modifier: Modifier = Modifier
+) {
+    val chipColor = backgroundColor ?: category?.let { TimeTrackingUtils.getCategoryColor(it) } ?: Color.Gray
+    val name = displayName ?: category?.let { TimeTrackingUtils.getCategoryName(it) } ?: "其他"
+    
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(chipColor.copy(alpha = 0.1f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodySmall,
+            color = chipColor,
+            fontSize = 12.sp
+        )
     }
 }
 
