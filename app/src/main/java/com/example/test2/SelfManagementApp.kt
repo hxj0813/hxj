@@ -3,6 +3,21 @@ package com.example.test2
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.example.test2.data.model.Goal
 import com.example.test2.domain.usecase.GoalUseCases
 import dagger.hilt.android.HiltAndroidApp
@@ -101,4 +116,43 @@ class SelfManagementApp : Application() {
             goalUseCases.saveGoals(sampleGoals)
         }
     }
+} 
+
+/**
+ * 主应用界面
+ * @param onLogout 登出回调
+ */
+@Composable
+fun SelfManagementApp(onLogout: () -> Unit) {
+    var showMenu by remember { mutableStateOf(false) }
+    
+    // 这里保留原来的主应用内容，并添加登出按钮
+    // 仅作为示例，实际应用中应该将此按钮集成到应用工具栏或设置中
+    
+    // 添加登出按钮
+    IconButton(
+        onClick = { showMenu = true }
+    ) {
+        Icon(
+            imageVector = Icons.Default.Logout,
+            contentDescription = "退出登录"
+        )
+        
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.padding(8.dp)
+        ) {
+            DropdownMenuItem(
+                text = { Text("退出登录") },
+                onClick = {
+                    showMenu = false
+                    onLogout()
+                }
+            )
+        }
+    }
+    
+    // 这里应该是原有的应用主界面内容
+    // 省略原有代码...
 } 

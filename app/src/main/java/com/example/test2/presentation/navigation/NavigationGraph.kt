@@ -34,7 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 // 暂时移除未实现的屏幕引用
 // import com.example.test2.presentation.home.HomeScreen
-// import com.example.test2.presentation.mine.MineScreen
+import com.example.test2.presentation.mine.MineScreen
 // import com.example.test2.presentation.note.NoteScreen
 import com.example.test2.presentation.habits.HabitsScreen
 import com.example.test2.presentation.habits.NotesScreen
@@ -46,6 +46,9 @@ import com.example.test2.presentation.tasks.TaskStatisticsScreen
 import com.example.test2.presentation.tasks.TasksScreen
 import com.example.test2.presentation.timetracking.PomodoroSessionScreen
 import com.example.test2.presentation.timetracking.TimeTrackingScreen
+import com.example.test2.presentation.auth.LoginScreen
+import com.example.test2.presentation.auth.RegisterScreen
+import com.example.test2.presentation.auth.ForgotPasswordScreen
 
 /**
  * 应用导航路由
@@ -64,6 +67,11 @@ sealed class NavRoute(val route: String) {
     object Reflect : NavRoute("reflect")
     object Note : NavRoute("note")
     object Mine : NavRoute("mine")
+    
+    // 认证相关路由
+    object Login : NavRoute("login")
+    object Register : NavRoute("register")
+    object ForgotPassword : NavRoute("forgot_password")
     
     // 任务相关子路由
     object TaskDetail : NavRoute("task_detail/{taskId}") {
@@ -108,11 +116,11 @@ val bottomNavItems = listOf(
     NavRoute.Habits,
     NavRoute.Goals,
     NavRoute.TimeTracking,
-    NavRoute.Reflect
+    NavRoute.Reflect,
+    NavRoute.Mine
     // 暂时移除未完全实现的导航项
     // NavRoute.Home,
     // NavRoute.Note,
-    // NavRoute.Mine
 )
 
 /**
@@ -150,10 +158,10 @@ fun AppNavigationGraph(
                                 NavRoute.Goals -> Icon(Icons.Default.Star, contentDescription = "目标")
                                 NavRoute.Habits -> Icon(Icons.Default.Loop, contentDescription = "习惯")
                                 NavRoute.Reflect -> Icon(Icons.Default.Book, contentDescription = "反思")
+                                NavRoute.Mine -> Icon(Icons.Default.Person, contentDescription = "我的")
                                 // 暂时移除未实现的图标
                                 // NavRoute.Home -> Icon(Icons.Default.Home, contentDescription = "首页")
                                 // NavRoute.Note -> Icon(Icons.Default.Note, contentDescription = "笔记")
-                                // NavRoute.Mine -> Icon(Icons.Default.Person, contentDescription = "我的")
                                 else -> {}
                             }
                         },
@@ -164,10 +172,10 @@ fun AppNavigationGraph(
                                 NavRoute.Goals -> Text("目标")
                                 NavRoute.Habits -> Text("习惯")
                                 NavRoute.Reflect -> Text("反思")
+                                NavRoute.Mine -> Text("我的")
                                 // 暂时移除未实现的标签
                                 // NavRoute.Home -> Text("首页")
                                 // NavRoute.Note -> Text("笔记")
-                                // NavRoute.Mine -> Text("我的")
                                 else -> {}
                             }
                         }
@@ -360,16 +368,63 @@ fun AppNavigationGraph(
                 )
             }
             
-            // 暂时注释掉未实现的页面
             // 笔记
-            // composable(route = NavRoute.Note.route) {
-            //     NoteScreen(navController = navController)
-            // }
+            composable(route = NavRoute.Note.route) {
+                NotesScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             
             // 我的
-            // composable(route = NavRoute.Mine.route) {
-            //     MineScreen(navController = navController)
-            // }
+            composable(route = NavRoute.Mine.route) {
+                MineScreen(
+                    navController = navController,
+                    onNavigateToNotes = {
+                        navController.navigate(NavRoute.Note.route)
+                    },
+                    onNavigateToLogin = {
+                        navController.navigate(NavRoute.Login.route)
+                    }
+                )
+            }
+            
+            // 登录
+            composable(route = NavRoute.Login.route) {
+                LoginScreen(
+                    onLoginSuccess = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(NavRoute.Register.route)
+                    },
+                    onNavigateToForgotPassword = {
+                        navController.navigate(NavRoute.ForgotPassword.route)
+                    }
+                )
+            }
+            
+            // 注册
+            composable(route = NavRoute.Register.route) {
+                RegisterScreen(
+                    onRegistrationSuccess = {
+                        navController.popBackStack()
+                    },
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            
+            // 忘记密码
+            composable(route = NavRoute.ForgotPassword.route) {
+                ForgotPasswordScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
             
             // TODO: 添加时间追踪详情页面
             // TODO: 添加目标详情页面

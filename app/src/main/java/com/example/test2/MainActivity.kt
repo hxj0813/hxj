@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // 使用重构后的单一导航系统
-                    AppNavigationGraph()
+                    AppNavigationGraph(modifier = Modifier.fillMaxSize())
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.example.test2.data.model
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteImage
+import com.google.firebase.Timestamp
 import java.util.Date
 import java.util.UUID
 
@@ -62,5 +63,61 @@ data class HabitNote(
         
         return today.get(java.util.Calendar.YEAR) == noteDate.get(java.util.Calendar.YEAR) &&
                today.get(java.util.Calendar.DAY_OF_YEAR) == noteDate.get(java.util.Calendar.DAY_OF_YEAR)
+    }
+    
+    /**
+     * 将笔记数据转换为Firestore可存储的Map
+     */
+    fun toMap(): Map<String, Any?> {
+        return mapOf(
+            "habitId" to habitId,
+            "title" to title,
+            "content" to content,
+            "mood" to mood.name,
+            "tags" to tags.map { it.name },
+            "images" to images.map { it.uri },
+            "createdAt" to Timestamp(createdAt.time / 1000, ((createdAt.time % 1000) * 1000000).toInt()),
+            "updatedAt" to Timestamp(updatedAt.time / 1000, ((updatedAt.time % 1000) * 1000000).toInt()),
+            "isPinned" to isPinned
+        )
+    }
+    
+    companion object {
+        /**
+         * 从Firestore文档数据创建笔记数据模型
+         */
+        fun fromMap(data: Map<String, Any>): HabitNote {
+            val moodString = data["mood"] as? String ?: NoteMood.NEUTRAL.name
+            val mood = try { 
+                NoteMood.valueOf(moodString) 
+            } catch (e: Exception) { 
+                NoteMood.NEUTRAL 
+            }
+            
+            val tagNames = (data["tags"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val tags = tagNames.map { NoteTag(id = UUID.randomUUID().toString(), name = it) }
+            
+            val imageUrls = (data["images"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val images = imageUrls.mapIndexed { index, uri -> 
+                NoteImage(
+                    id = index.toString(),
+                    uri = uri,
+                    createdAt = Date()
+                )
+            }
+            
+            return HabitNote(
+                id = data["id"] as? String ?: UUID.randomUUID().toString(),
+                habitId = data["habitId"] as? String ?: "",
+                title = data["title"] as? String ?: "",
+                content = data["content"] as? String ?: "",
+                mood = mood,
+                tags = tags,
+                images = images,
+                createdAt = (data["createdAt"] as? Timestamp)?.toDate() ?: Date(),
+                updatedAt = (data["updatedAt"] as? Timestamp)?.toDate() ?: Date(),
+                isPinned = data["isPinned"] as? Boolean ?: false
+            )
+        }
     }
 } 

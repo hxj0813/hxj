@@ -2,6 +2,7 @@ package com.example.test2.data.model
 
 import android.net.Uri
 import android.util.Log
+import com.google.firebase.Timestamp
 import java.util.Date
 
 /**
@@ -18,6 +19,18 @@ data class NoteImage(
     val description: String = "",
     val createdAt: Date = Date()
 ) {
+    /**
+     * 将笔记图片数据转换为Firestore可存储的Map
+     */
+    fun toMap(): Map<String, Any?> {
+        return mapOf(
+            "id" to id,
+            "uri" to uri,
+            "description" to description,
+            "createdAt" to Timestamp(createdAt.time / 1000, ((createdAt.time % 1000) * 1000000).toInt())
+        )
+    }
+    
     /**
      * 将URI字符串或文件路径转换为android.net.Uri对象
      * 处理各种可能的URI格式
