@@ -90,10 +90,17 @@ interface CheckInTaskDao {
      */
     @Query("""
         UPDATE check_in_tasks 
-        SET completedToday = :completedToday, 
+        SET todayCompletionsCount = CASE 
+                WHEN :completedToday = 1 THEN todayCompletionsCount + 1
+                ELSE todayCompletionsCount
+            END,
+            completedToday = CASE
+                WHEN :completedToday = 1 AND (todayCompletionsCount + 1) >= frequencyCount THEN 1
+                ELSE completedToday
+            END,
             lastCompletedDate = CASE WHEN :completedToday = 1 THEN :currentDate ELSE lastCompletedDate END,
             currentStreak = CASE 
-                WHEN :completedToday = 1 THEN 
+                WHEN :completedToday = 1 AND (todayCompletionsCount + 1) >= frequencyCount THEN 
                     CASE 
                         WHEN lastCompletedDate IS NULL THEN 1
                         WHEN (strftime('%Y-%m-%d', :currentDate / 1000, 'unixepoch') > strftime('%Y-%m-%d', lastCompletedDate / 1000, 'unixepoch')) THEN currentStreak + 1
@@ -103,6 +110,7 @@ interface CheckInTaskDao {
             END,
             bestStreak = CASE 
                 WHEN :completedToday = 1 AND 
+                     (todayCompletionsCount + 1) >= frequencyCount AND
                      (strftime('%Y-%m-%d', :currentDate / 1000, 'unixepoch') > strftime('%Y-%m-%d', IFNULL(lastCompletedDate, 0) / 1000, 'unixepoch')) AND 
                      currentStreak + 1 > bestStreak 
                 THEN currentStreak + 1
@@ -121,7 +129,7 @@ interface CheckInTaskDao {
      * 重置每日完成状态
      * 通常由定时任务在每天零点调用
      */
-    @Query("UPDATE check_in_tasks SET completedToday = 0")
+    @Query("UPDATE check_in_tasks SET completedToday = 0, todayCompletionsCount = 0")
     suspend fun resetDailyCompletionStatus()
     
     /**

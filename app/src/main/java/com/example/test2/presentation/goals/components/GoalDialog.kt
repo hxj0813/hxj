@@ -1,6 +1,7 @@
 package com.example.test2.presentation.goals.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -248,30 +249,32 @@ fun GoalDialog(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // 关联任务选项
+                // 关联任务开关
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Task,
-                        contentDescription = "关联任务",
-                        tint = PrimaryLight,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .padding(end = 8.dp)
-                    )
-                    
                     Text(
                         text = "关联任务",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
-                    Spacer(modifier = Modifier.weight(1f))
-                    
                     Switch(
                         checked = hasLinkedTask,
                         onCheckedChange = { hasLinkedTask = it }
+                    )
+                }
+                
+                // 添加解释性文本
+                AnimatedVisibility(visible = !hasLinkedTask) {
+                    Text(
+                        text = "未关联任务的目标将根据距离截止日期的时间自动计算进度，截止日期时进度将达到100%。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
                 

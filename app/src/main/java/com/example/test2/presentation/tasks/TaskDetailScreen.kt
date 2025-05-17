@@ -33,6 +33,8 @@ import com.example.test2.data.local.entity.TaskPriority
 import com.example.test2.data.local.entity.TaskType
 import com.example.test2.data.local.entity.TaskTagEntity
 import com.example.test2.data.local.entity.PomodoroTaskEntity
+import com.example.test2.data.local.entity.CheckInTaskEntity
+import com.example.test2.data.local.entity.FrequencyType
 import com.example.test2.presentation.components.SuccessDialog
 import com.example.test2.presentation.tasks.viewmodel.TaskManagerViewModel
 import com.example.test2.util.DateTimeUtil
@@ -40,6 +42,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavBackStackEntry
 
 /**
  * 任务详情屏幕
@@ -56,7 +61,8 @@ fun TaskDetailScreen(
     onNavigateBack: () -> Unit,
     onEdit: (Task) -> Unit,
     onStart: (String) -> Unit,
-    viewModel: TaskManagerViewModel = hiltViewModel()
+    viewModel: TaskManagerViewModel = hiltViewModel(),
+    navBackStackEntry: androidx.navigation.NavBackStackEntry? = null
 ) {
     // 加载任务详情
     LaunchedEffect(taskId) {
@@ -74,6 +80,18 @@ fun TaskDetailScreen(
     // 添加成功对话框状态
     var showSuccessDialog by remember { mutableStateOf(false) }
     var successMessage by remember { mutableStateOf("") }
+    
+    // 检查是否从番茄钟会话完成后返回
+    LaunchedEffect(navBackStackEntry) {
+        val showPomodoroSuccessMessage = navBackStackEntry?.savedStateHandle?.get<Boolean>("showPomodoroSuccessMessage") ?: false
+        if (showPomodoroSuccessMessage) {
+            // 消费掉这个标记
+            navBackStackEntry?.savedStateHandle?.remove<Boolean>("showPomodoroSuccessMessage")
+            // 显示成功对话框
+            successMessage = "番茄钟会话已完成！继续保持！"
+            showSuccessDialog = true
+        }
+    }
     
     // 颜色定义
     val taskTypeColors = mapOf(
@@ -317,46 +335,83 @@ fun TaskDetailScreen(
                                 TaskType.CHECK_IN -> {
                                     // 获取打卡任务信息
                                     val checkInTaskId = currentTask.id
-                                    // 这里我们应该使用viewModel获取CheckInTaskEntity
-                                    // 这里简化处理，使用基础数据显示
+                                    // 使用viewModel获取CheckInTaskEntity
+                                    var checkInTask by remember { mutableStateOf<CheckInTaskEntity?>(null) }
+                                    
+                                    // 添加打卡任务数据加载逻辑
+                                    LaunchedEffect(checkInTaskId, showSuccessDialog) {
+                                        println("加载打卡任务数据: $checkInTaskId")
+                                        checkInTask = viewModel.getCheckInTaskRepository().getCheckInTaskById(checkInTaskId)
+                                    }
+                                    
                                     Divider(modifier = Modifier.padding(vertical = 16.dp))
                                     
                                     InfoSection(
                                         title = "打卡统计",
                                         content = {
-                                            // 简化的打卡任务信息
+                                            // 打卡频率信息
                                             InfoItem(
                                                 icon = Icons.Default.Repeat,
                                                 label = "打卡频率",
-                                                value = "每日打卡",
+                                                value = checkInTask?.let { task ->
+                                                    when(task.getFrequencyTypeEnum()) {
+                                                        FrequencyType.DAILY -> "每日打卡"
+                                                        FrequencyType.WEEKLY -> "每周${task.frequencyCount}天"
+                                                        FrequencyType.MONTHLY -> "每月${task.frequencyCount}天"
+                                                        FrequencyType.CUSTOM -> "自定义"
+                                                    }
+                                                } ?: "每日打卡",
                                                 color = currentColor
                                             )
                                             
+                                            // 当前连续打卡
                                             InfoItem(
                                                 icon = Icons.Default.Whatshot,
                                                 label = "当前连续打卡",
-                                                value = "0 天",
+                                                value = "${checkInTask?.currentStreak ?: 0} 天",
                                                 color = Color(0xFFFF9800)
                                             )
                                             
+                                            // 最佳连续打卡
                                             InfoItem(
                                                 icon = Icons.Default.EmojiEvents,
                                                 label = "最佳连续打卡",
-                                                value = "0 天",
+                                                value = "${checkInTask?.bestStreak ?: 0} 天",
                                                 color = Color(0xFFFFD700)
                                             )
                                             
+                                            // 总打卡次数
                                             InfoItem(
                                                 icon = Icons.Default.CheckCircle,
                                                 label = "总打卡次数",
-                                                value = "0 次",
+                                                value = "${checkInTask?.totalCompletions ?: 0} 次",
                                                 color = Color(0xFF4CAF50)
                                             )
                                             
+                                            // 今日是否已打卡
+                                            InfoItem(
+                                                icon = Icons.Default.Today,
+                                                label = "今日打卡状态",
+                                                value = if (checkInTask?.completedToday == true) "已完成" else "未完成",
+                                                color = if (checkInTask?.completedToday == true) Color(0xFF4CAF50) else Color(0xFFFF5252)
+                                            )
+                                            
+                                            // 上次打卡时间
+                                            checkInTask?.let { task ->
+                                                if (task.lastCompletedDate != null) {
+                                                    InfoItem(
+                                                        icon = Icons.Default.Schedule,
+                                                        label = "上次打卡时间",
+                                                        value = DateTimeUtil.formatDateTime(task.lastCompletedDate),
+                                                        color = Color(0xFF2196F3)
+                                                    )
+                                                }
+                                            }
+                                            
                                             // 当前进度条
                                             ProgressSection(
-                                                title = "今日进度: 0/1",
-                                                progress = 0f,
+                                                title = "今日进度: ${checkInTask?.todayCompletionsCount ?: 0}/${checkInTask?.frequencyCount ?: 1}",
+                                                progress = checkInTask?.getCompletionProgress() ?: 0f,
                                                 color = currentColor
                                             )
                                         }
@@ -367,10 +422,18 @@ fun TaskDetailScreen(
                                     val pomodoroTaskId = currentTask.id
                                     // 使用viewModel获取PomodoroTaskEntity
                                     var pomodoroTask by remember { mutableStateOf<PomodoroTaskEntity?>(null) }
+                                    // 今日完成的番茄钟数量
+                                    var todayPomodoroCount by remember { mutableStateOf(0) }
                                     
                                     // 获取番茄钟任务详情
-                                    LaunchedEffect(pomodoroTaskId) {
+                                    LaunchedEffect(pomodoroTaskId, showSuccessDialog) {
+                                        println("加载番茄钟任务数据: $pomodoroTaskId")
                                         pomodoroTask = viewModel.getPomodoroTaskRepository().getPomodoroTaskById(pomodoroTaskId)
+                                        println("加载的番茄钟任务数据: 总专注时间=${pomodoroTask?.totalFocusTime}, 总完成次数=${pomodoroTask?.completedPomodoros}, 最后会话日期=${pomodoroTask?.lastSessionDate}")
+                                        
+                                        // 获取今日完成的番茄钟数量
+                                        todayPomodoroCount = viewModel.getPomodoroTaskRepository().getTodayPomodoroCount(pomodoroTaskId)
+                                        println("今日完成的番茄钟数量: $todayPomodoroCount")
                                     }
                                     
                                     Divider(modifier = Modifier.padding(vertical = 16.dp))
@@ -418,17 +481,11 @@ fun TaskDetailScreen(
                                                 color = Color(0xFFFF7F7F)
                                             )
                                             
-                                            // 今日完成次数 - 这个需要额外逻辑计算，简化处理
+                                            // 今日完成次数
                                             InfoItem(
                                                 icon = Icons.Default.Today,
                                                 label = "今日完成次数",
-                                                value = pomodoroTask?.let { task ->
-                                                    if (task.lastSessionDate != null && DateTimeUtil.isToday(task.lastSessionDate)) {
-                                                        "${task.completedPomodoros} 次"
-                                                    } else {
-                                                        "0 次"
-                                                    }
-                                                } ?: "0 次",
+                                                value = "$todayPomodoroCount 次",
                                                 color = Color(0xFFFF7F7F)
                                             )
                                         }

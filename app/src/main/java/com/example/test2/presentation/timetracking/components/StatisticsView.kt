@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +52,18 @@ fun StatisticsView(
     statistics: TimeStatistics,
     modifier: Modifier = Modifier
 ) {
+    // Log when statistics are updated
+    LaunchedEffect(statistics) {
+        println("StatisticsView: 收到新的统计数据 - 总时间: ${statistics.totalTrackedSeconds}秒, 分类: ${statistics.categoryBreakdown}")
+    }
+    
+    // 从统计数据中提取时间戳或使用当前时间
+    val recomposeKey = if (statistics.categoryBreakdown.containsKey("_timestamp")) {
+        statistics.categoryBreakdown["_timestamp"] ?: System.currentTimeMillis()
+    } else {
+        System.currentTimeMillis()
+    }
+    
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -82,14 +95,21 @@ fun StatisticsView(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            if (statistics.categoryBreakdown.isNotEmpty()) {
-                // 饼图
-                PieChart(categoryDurations = statistics.categoryBreakdown)
+            // 过滤掉我们添加的时间戳字段
+            val filteredStats = statistics.categoryBreakdown.filterKeys { it != "_timestamp" }
+            
+            if (filteredStats.isNotEmpty()) {
+                // 饼图 - 使用key参数强制重组
+                key(recomposeKey) {
+                    PieChart(categoryDurations = filteredStats)
+                }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // 分类图例
-                CategoryLegend(categoryDurations = statistics.categoryBreakdown)
+                // 分类图例 - 使用key参数强制重组
+                key(recomposeKey) {
+                    CategoryLegend(categoryDurations = filteredStats)
+                }
             } else {
                 Text(
                     text = "暂无数据",
@@ -174,13 +194,16 @@ fun PieChart(
     categoryDurations: Map<String, Long>,
     modifier: Modifier = Modifier
 ) {
+    // Add timestamp to ensure remember keys are invalidated
+    val timestamp = remember { System.currentTimeMillis() }
+    
     // 计算总时间
-    val totalTime = remember(categoryDurations) {
+    val totalTime = remember(categoryDurations, timestamp) {
         categoryDurations.values.sum().toFloat()
     }
     
     // 排序后的分类
-    val sortedCategories = remember(categoryDurations) {
+    val sortedCategories = remember(categoryDurations, timestamp) {
         categoryDurations.entries
             .filter { it.value > 0 }
             .sortedByDescending { it.value }
@@ -188,7 +211,7 @@ fun PieChart(
     }
     
     // 计算每个分类的角度
-    val sweepAngles = remember(categoryDurations, totalTime) {
+    val sweepAngles = remember(categoryDurations, totalTime, timestamp) {
         if (totalTime <= 0f) emptyMap()
         else categoryDurations.mapValues { (_, duration) -> 
             (duration.toFloat() / totalTime) * 360f 
@@ -197,6 +220,11 @@ fun PieChart(
     
     var animationTriggered by remember { mutableStateOf(false) }
     LaunchedEffect(categoryDurations) {
+        println("PieChart: 收到新的分类数据 - ${categoryDurations}, 总时间: ${totalTime}")
+        // Reset animation state and then trigger it
+        animationTriggered = false
+        // Small delay to ensure state change is processed
+        kotlinx.coroutines.delay(50)
         animationTriggered = true
     }
     
@@ -293,7 +321,10 @@ fun CategoryLegend(
     categoryDurations: Map<String, Long>,
     modifier: Modifier = Modifier
 ) {
-    val sortedEntries = remember(categoryDurations) {
+    // Add timestamp to ensure remember keys are invalidated
+    val timestamp = remember { System.currentTimeMillis() }
+    
+    val sortedEntries = remember(categoryDurations, timestamp) {
         categoryDurations.entries
             .filter { it.value > 0 }
             .sortedByDescending { it.value }

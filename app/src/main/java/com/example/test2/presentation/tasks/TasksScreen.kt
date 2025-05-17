@@ -53,6 +53,7 @@ fun TasksScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToStatistics: () -> Unit,
     initialGoalId: Long? = null,
+    onTaskCreated: () -> Unit = {},
     viewModel: TaskManagerViewModel = hiltViewModel()
 ) {
     val state by viewModel.combinedTaskState.collectAsState()
@@ -61,12 +62,23 @@ fun TasksScreen(
     
     // 如果有初始目标ID，自动打开任务创建对话框
     LaunchedEffect(initialGoalId) {
-        if (initialGoalId != null) {
+        if (initialGoalId != null && initialGoalId > 0) {
             // 准备创建任务
             viewModel.prepareCreateTask()
             
             // 设置关联目标
             viewModel.setTaskEditorField("goalId", initialGoalId)
+        }
+    }
+    
+    // 任务创建完成或取消后，清除initialGoalId的效果
+    DisposableEffect(editorState.isShowingTaskForm) {
+        // 当表单关闭时，重置导航状态
+        onDispose {
+            if (!editorState.isShowingTaskForm && initialGoalId != null && initialGoalId > 0) {
+                // 通知任务创建过程已完成
+                onTaskCreated()
+            }
         }
     }
     

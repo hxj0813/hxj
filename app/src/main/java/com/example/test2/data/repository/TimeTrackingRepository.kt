@@ -374,6 +374,14 @@ class TimeTrackingRepository @Inject constructor(
      * 将TimeEntry模型转换为Entity
      */
     private fun mapTimeEntryToEntity(timeEntry: TimeEntry): TimeEntryEntity {
+        // 如果tagId不为空但tags为空，添加一个默认标签
+        val finalTags = if (timeEntry.tagId != null && timeEntry.tags.isEmpty()) {
+            // 从taskTagRepository获取标签名称
+            listOf(timeEntry.tagId)
+        } else {
+            timeEntry.tags
+        }
+        
         return TimeEntryEntity(
             id = if (timeEntry.id > 0) timeEntry.id else 0,
             title = timeEntry.title,
@@ -383,7 +391,7 @@ class TimeTrackingRepository @Inject constructor(
             endTime = timeEntry.endTime?.time,
             durationSeconds = timeEntry.duration,
             taskId = timeEntry.taskId,
-            tags = gson.toJson(timeEntry.tags),
+            tags = gson.toJson(finalTags),
             isPomodoro = timeEntry.category == TimeCategory.FOCUS,
             createdAt = timeEntry.createdAt.time,
             updatedAt = System.currentTimeMillis()

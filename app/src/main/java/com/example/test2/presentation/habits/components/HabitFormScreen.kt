@@ -28,6 +28,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.text.font.FontWeight
 
 
 /**
@@ -61,6 +65,9 @@ fun HabitFormScreen(
 ) {
     var formData by remember { mutableStateOf(habitData) }
     val scrollState = rememberScrollState()
+    
+    // 日期选择器状态
+    var showTimePicker by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -224,9 +231,43 @@ fun HabitFormScreen(
         }
         
         AnimatedVisibility(visible = formData.reminder) {
-            TimePickerRow(
-                time = formData.reminderTime ?: getDefaultReminderTime(),
-                onTimeSelected = { formData = formData.copy(reminderTime = it) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable {
+                        // 点击打开日期选择器
+                        showTimePicker = true
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Alarm,
+                    contentDescription = "提醒时间",
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                
+                val time = formData.reminderTime ?: getDefaultReminderTime()
+                val calendar = Calendar.getInstance().apply { this.time = time }
+                val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                val minute = calendar.get(Calendar.MINUTE)
+                
+                Text(
+                    text = String.format("%02d:%02d", hour, minute),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+        
+        // 显示时间选择器
+        if (showTimePicker) {
+            ShowTimePicker(
+                initialTime = formData.reminderTime ?: getDefaultReminderTime(),
+                onTimeSelected = { selectedTime ->
+                    formData = formData.copy(reminderTime = selectedTime)
+                    showTimePicker = false
+                },
+                onDismiss = { showTimePicker = false }
             )
         }
         
@@ -642,32 +683,86 @@ fun PriorityChip(
     }
 }
 
+// 简化的时间选择器对话框组件
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimePickerRow(
-    time: Date,
-    onTimeSelected: (Date) -> Unit
+private fun ShowTimePicker(
+    initialTime: Date,
+    onTimeSelected: (Date) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    // 简化版的时间选择器，实际项目中应使用MaterialTimePicker
-    val calendar = Calendar.getInstance().apply { this.time = time }
-    val hour = calendar.get(Calendar.HOUR_OF_DAY)
-    val minute = calendar.get(Calendar.MINUTE)
+    // 解析初始时间
+    val calendar = Calendar.getInstance().apply { time = initialTime }
     
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    // 时间选择器状态
+    val timePickerState = rememberTimePickerState(
+        initialHour = calendar.get(Calendar.HOUR_OF_DAY),
+        initialMinute = calendar.get(Calendar.MINUTE),
+        is24Hour = true
+    )
+    
+    Dialog(
+        onDismissRequest = onDismiss
     ) {
-        Icon(
-            imageVector = Icons.Default.Alarm,
-            contentDescription = "提醒时间",
-            modifier = Modifier.padding(end = 8.dp)
-        )
-        
-        Text(
-            text = String.format("%02d:%02d", hour, minute),
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .padding(10.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 8.dp
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "选择提醒时间",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                TimePicker(
+                    state = timePickerState,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss
+                    ) {
+                        Text("取消")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            // 创建只含时间的Date对象
+                            val resultCalendar = Calendar.getInstance()
+                            resultCalendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                            resultCalendar.set(Calendar.MINUTE, timePickerState.minute)
+                            resultCalendar.set(Calendar.SECOND, 0)
+                            resultCalendar.set(Calendar.MILLISECOND, 0)
+                            
+                            onTimeSelected(resultCalendar.time)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text("确定")
+                    }
+                }
+            }
+        }
     }
 }
 

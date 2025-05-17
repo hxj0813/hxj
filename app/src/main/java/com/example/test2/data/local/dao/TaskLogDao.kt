@@ -135,6 +135,16 @@ interface TaskLogDao {
      */
     @Query("UPDATE task_logs SET mood = :mood WHERE id = :logId")
     suspend fun updateLogMood(logId: String, mood: Int?)
+    
+    /**
+     * 获取特定任务在指定日期范围内完成的番茄钟数量
+     */
+    @Query("""
+        SELECT SUM(pomodoroCount) 
+        FROM task_logs 
+        WHERE taskId = :taskId AND completedDate BETWEEN :startDate AND :endDate
+    """)
+    suspend fun getTaskPomodoroCountInDateRange(taskId: String, startDate: Date, endDate: Date): Int?
 }
 
 /**

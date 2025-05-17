@@ -32,7 +32,6 @@ data class HabitsState(
     val isLoading: Boolean = false,
     val showOnlyActive: Boolean = true,
     val currentFilter: HabitCategory? = null,
-    val searchQuery: String = "",
     val showAddEditForm: Boolean = false,
     val currentEditHabit: HabitFormData? = null,
     val error: String? = null
@@ -54,15 +53,13 @@ class HabitsViewModel @Inject constructor(
     // 习惯列表流
     private val _showOnlyActive = MutableStateFlow(true)
     private val _currentFilter = MutableStateFlow<HabitCategory?>(null)
-    private val _searchQuery = MutableStateFlow("")
     
-    // 合并流处理筛选逻辑
+    // 过滤后的习惯流
     val filteredHabits: StateFlow<List<HabitEntity>> = combine(
         habitRepository.getAllHabits(),
         _showOnlyActive,
-        _currentFilter,
-        _searchQuery
-    ) { habits, onlyActive, category, query ->
+        _currentFilter
+    ) { habits, onlyActive, category ->
         var result = habits
         
         // 筛选活跃/归档习惯
@@ -73,14 +70,6 @@ class HabitsViewModel @Inject constructor(
         // 按类别筛选
         if (category != null) {
             result = result.filter { it.getCategoryEnum() == category }
-        }
-        
-        // 搜索查询
-        if (query.isNotBlank()) {
-            result = result.filter { 
-                it.title.contains(query, ignoreCase = true) || 
-                (it.description?.contains(query, ignoreCase = true) ?: false)
-            }
         }
         
         result
@@ -306,14 +295,6 @@ class HabitsViewModel @Inject constructor(
     fun setCategoryFilter(category: HabitCategory?) {
         _currentFilter.value = category
         _state.value = _state.value.copy(currentFilter = category)
-    }
-    
-    /**
-     * 设置搜索查询
-     */
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-        _state.value = _state.value.copy(searchQuery = query)
     }
     
     /**

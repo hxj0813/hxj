@@ -354,27 +354,39 @@ class TimeTrackingViewModel @Inject constructor(
      */
     private suspend fun loadStatisticsForRange(startDate: Date, endDate: Date) {
         try {
+            println("开始加载统计数据: ${startDate} - ${endDate}")
+            
             // 获取分类统计
             val categoryBreakdown = repository.getCategoryBreakdown(startDate, endDate)
+            println("分类统计加载完成: ${categoryBreakdown}")
             
             // 获取总番茄钟数
             val totalPomodoros = repository.getTotalCompletedPomodoros(startDate, endDate)
+            println("总番茄钟数: ${totalPomodoros}")
             
             // 获取总追踪时间
             val totalTrackedTime = repository.getTotalTrackedTime(startDate, endDate)
+            println("总追踪时间: ${totalTrackedTime}秒")
+            
+            // 创建一个新的TimeStatistics对象，并添加一个随机标识，确保状态变化被检测到
+            val statisticsTimestamp = System.currentTimeMillis()
+            val newStatistics = TimeStatistics(
+                totalTrackedSeconds = totalTrackedTime,
+                totalPomodoros = totalPomodoros,
+                categoryBreakdown = categoryBreakdown.toMutableMap().also { 
+                    // 添加一个微小的随机偏移，确保状态更新被检测到
+                    it["_timestamp"] = statisticsTimestamp % 10 // 只保留最后一位数字，影响微乎其微
+                },
+                dateRange = Pair(startDate, endDate)
+            )
             
             // 更新统计状态
             _state.update { 
-                it.copy(
-                    statistics = TimeStatistics(
-                        totalTrackedSeconds = totalTrackedTime,
-                        totalPomodoros = totalPomodoros,
-                        categoryBreakdown = categoryBreakdown,
-                        dateRange = Pair(startDate, endDate)
-                    )
-                )
+                it.copy(statistics = newStatistics)
             }
+            println("统计状态已更新，时间戳: $statisticsTimestamp")
         } catch (e: Exception) {
+            println("加载统计数据失败: ${e.message}")
             _state.update { it.copy(error = "加载统计数据失败: ${e.message}") }
         }
     }
@@ -595,11 +607,14 @@ class TimeTrackingViewModel @Inject constructor(
                 val longBreak = pomodoroTask?.longBreakLength ?: 15
                 val sessionsCount = pomodoroTask?.estimatedPomodoros ?: 4
                 
-                // 创建一个任务对象，使用更自然的标题和描述
+                // 尝试从任务仓库获取任务详情
+                val dbTask = taskRepository.getTaskById(taskId)
+                
+                // 创建一个任务对象，优先使用数据库中的任务信息
                 val task = Task(
                     id = taskId.toLongOrNull() ?: 0,
-                    title = "专注工作",  // 使用通用的标题，不显示"示例任务"或"任务 #ID"
-                    description = "专注时间",  // 使用简洁的描述
+                    title = dbTask?.title ?: "专注任务",  // 使用数据库中的标题，PomodoroTaskEntity没有title属性
+                    description = dbTask?.description ?: "",  // 使用数据库中的描述，PomodoroTaskEntity没有description属性
                     type = TaskType.POMODORO,
                     priority = TaskPriority.MEDIUM,
                     dueDate = Date(),
@@ -674,6 +689,10 @@ class TimeTrackingViewModel @Inject constructor(
                         isPaused = false
                     )
                 }
+                
+                // 自动启动休息计时器
+                startTimer()
+                
             } catch (e: Exception) {
                 // 出错时使用默认设置
                 val isLongBreak = currentState.currentSession % 4 == 0
@@ -687,6 +706,9 @@ class TimeTrackingViewModel @Inject constructor(
                         isPaused = false
                     )
                 }
+                
+                // 自动启动休息计时器
+                startTimer()
             }
         }
     }
@@ -832,47 +854,53 @@ class TimeTrackingViewModel @Inject constructor(
                 // 获取番茄钟任务信息
                 val pomodoroTask = pomodoroTaskRepository.getPomodoroTaskById(task.id.toString())
                 
-                // 确定分类 - 如果有番茄钟任务，则使用其标签；否则使用默认的学习分类
-                val category = if (pomodoroTask != null && pomodoroTask.tagId != null) {
-                    // 尝试获取标签对应的分类
-                    try {
-                        // 根据标签分类获取对应的 PomodoroTag
-                        val tagCategory = pomodoroTask.getTagCategoryEnum()
-                        when (tagCategory) {
-                            TagCategory.STUDY -> TimeCategory.STUDY
-                            TagCategory.EXERCISE -> TimeCategory.EXERCISE
-                            TagCategory.WORK -> TimeCategory.WORK
-                            else -> TimeCategory.STUDY // 默认为学习
-                        }
-                    } catch (e: Exception) {
-                        TimeCategory.STUDY // 出错时默认为学习
-                    }
+                println("正在保存番茄钟会话，任务ID: ${task.id}")
+                if (pomodoroTask != null) {
+                    println("找到番茄钟任务，标签ID: ${pomodoroTask.tagId}")
                 } else {
-                    TimeCategory.STUDY // 没有番茄钟任务或标签时默认为学习
+                    println("未找到番茄钟任务")
                 }
                 
-                // 获取任务标签名称
-                val tagName = if (pomodoroTask != null) {
+                // 确定标签名称
+                var tagName: String? = null
+                
+                if (pomodoroTask != null) {
+                    // 1. 首先检查自定义标签名称
                     if (!pomodoroTask.customTagName.isNullOrBlank()) {
-                        // 如果有自定义标签名称，优先使用
-                        pomodoroTask.customTagName
-                    } else if (pomodoroTask.tagId != null) {
-                        // 尝试从数据库获取标签名称
-                        try {
-                            val tag = taskTagRepository.getTagById(pomodoroTask.tagId)
-                            tag?.name
-                        } catch (e: Exception) {
-                            null
+                        tagName = pomodoroTask.customTagName
+                        println("使用自定义标签名称: $tagName")
+                    } 
+                    // 2. 然后检查标签ID
+                    else if (pomodoroTask.tagId != null) {
+                        val tag = taskTagRepository.getTagById(pomodoroTask.tagId)
+                        if (tag != null) {
+                            tagName = tag.name
+                            println("使用标签ID找到标签: $tagName")
+                        } else {
+                            println("标签ID不存在: ${pomodoroTask.tagId}")
                         }
-                    } else {
-                        // 使用分类名称作为标签
-                        pomodoroTask.getTagCategoryEnum().name
                     }
-                } else {
-                    null
+                    // 3. 最后使用分类名称作为标签
+                    if (tagName == null) {
+                        // 使用分类的英文名称作为标签
+                        val tagCategory = pomodoroTask.getTagCategoryEnum()
+                        tagName = when (tagCategory) {
+                            TagCategory.WORK -> "工作"
+                            TagCategory.STUDY -> "学习"
+                            TagCategory.EXERCISE -> "运动"
+                            TagCategory.READING -> "阅读"
+                            TagCategory.CREATIVE -> "创意"
+                            TagCategory.PERSONAL -> "个人发展"
+                            else -> "其他"
+                        }
+                        println("使用分类名称作为标签: $tagName")
+                    }
                 }
                 
-                // 创建时间条目
+                // 使用FOCUS分类来确保在时间条目列表中能正确显示标签
+                val category = TimeCategory.FOCUS
+                
+                // 创建时间条目，确保设置标签和分类
                 val timeEntry = TimeEntry(
                     id = 0,
                     title = "番茄钟: ${task.title}",
@@ -880,10 +908,17 @@ class TimeTrackingViewModel @Inject constructor(
                     startTime = Date(System.currentTimeMillis() - _state.value.totalTimeInSeconds * 1000),
                     endTime = Date(),
                     duration = _state.value.totalTimeInSeconds.toLong(),
-                    category = category, // 使用确定的分类
+                    category = category, // 使用FOCUS分类
                     taskId = task.id,
-                    tags = if (tagName != null) listOf(tagName) else listOf() // 将任务标签名称添加到标签列表
+                    // 设置标签列表
+                    tags = if (tagName != null) listOf(tagName) else listOf(),
+                    // 保存标签ID
+                    tagId = pomodoroTask?.tagId
                 )
+                
+                println("创建时间条目: ${timeEntry.title}")
+                println("标签: ${timeEntry.tags}")
+                println("分类: ${timeEntry.category}")
                 
                 // 保存时间条目
                 repository.saveTimeEntry(timeEntry)
@@ -903,6 +938,9 @@ class TimeTrackingViewModel @Inject constructor(
                     // 检查任务是否已完成所有预计的番茄钟
                     checkAndUpdateTaskCompletion(pomodoroTask)
                 }
+                
+                // 刷新统计数据以立即更新环形图
+                refreshCurrentDateStatistics()
                 
                 // 重置状态
                 _state.update { 

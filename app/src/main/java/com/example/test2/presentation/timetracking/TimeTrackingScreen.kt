@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.CircularProgressIndicator
@@ -105,109 +107,129 @@ fun TimeTrackingScreen(
                 )
             }
         ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp)
+            // 使用LazyColumn作为主要容器，可以滚动所有内容
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding() + 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
-                // 计时器视图
-                TimerView(
-                    ongoingEntry = state.ongoingEntry,
-                    onStopTimer = {
-                        viewModel.onEvent(TimeTrackingEvent.StopTimeEntry())
-                    },
-                    onStartTimer = { timeEntry ->
-                        viewModel.onEvent(TimeTrackingEvent.StartTimeEntry(timeEntry))
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-                
-                // 统计视图
-                StatisticsView(
-                    statistics = state.statistics,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-                
-                // 日期显示
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(state.selectedDate),
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground
+                // 固定区域: 计时器
+                item {
+                    TimerView(
+                        ongoingEntry = state.ongoingEntry,
+                        onStopTimer = {
+                            viewModel.onEvent(TimeTrackingEvent.StopTimeEntry())
+                        },
+                        onStartTimer = { timeEntry ->
+                            viewModel.onEvent(TimeTrackingEvent.StartTimeEntry(timeEntry))
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
                     )
                 }
                 
-                Divider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+                // 固定区域: 统计视图
+                item {
+                    StatisticsView(
+                        statistics = state.statistics,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+                }
                 
-                // 时间条目列表
-                if (state.isLoading) {
-                    Box(
-                        contentAlignment = Alignment.Center,
+                // 固定区域: 日期显示
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                } else if (state.timeEntries.isEmpty()) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
+                            .padding(vertical = 8.dp)
                     ) {
                         Text(
-                            text = "今天还没有时间记录",
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            text = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()).format(state.selectedDate),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        items(
-                            items = state.timeEntries,
-                            key = { it.id }
-                        ) { timeEntry ->
-                            TimeEntryCard(
-                                timeEntry = timeEntry,
-                                onClick = { 
-                                    viewModel.onEvent(TimeTrackingEvent.SelectTimeEntry(timeEntry))
-                                },
-                                onEdit = {
-                                    viewModel.onEvent(TimeTrackingEvent.ShowEditEntryDialog(timeEntry))
-                                },
-                                onDelete = {
-                                    viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id))
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .animateItemPlacement()
+                    
+                    Divider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                
+                // 加载中状态
+                if (state.isLoading) {
+                    item {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
+                    }
+                } 
+                // 空状态
+                else if (state.timeEntries.isEmpty()) {
+                    item {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        ) {
+                            Text(
+                                text = "今天还没有时间记录",
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+                // 时间条目列表
+                else {
+                    item {
+                        Text(
+                            text = "今日记录",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                    }
+                    
+                    items(
+                        items = state.timeEntries,
+                        key = { it.id }
+                    ) { timeEntry ->
+                        TimeEntryCard(
+                            timeEntry = timeEntry,
+                            onClick = { 
+                                viewModel.onEvent(TimeTrackingEvent.SelectTimeEntry(timeEntry))
+                            },
+                            onEdit = {
+                                viewModel.onEvent(TimeTrackingEvent.ShowEditEntryDialog(timeEntry))
+                            },
+                            onDelete = {
+                                viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id))
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItemPlacement()
+                        )
                     }
                 }
             }

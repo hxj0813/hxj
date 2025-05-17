@@ -62,7 +62,7 @@ fun PomodoroSessionScreen(
     // 时间计算
     val minutes = state.remainingTimeInSeconds / 60
     val seconds = state.remainingTimeInSeconds % 60
-    val progress = 1f - (state.remainingTimeInSeconds.toFloat() / state.totalTimeInSeconds.toFloat())
+    val progress = if (state.totalTimeInSeconds <= 0) 0f else 1f - (state.remainingTimeInSeconds.toFloat() / state.totalTimeInSeconds.toFloat())
     
     // 错误处理
     if (state.error != null) {

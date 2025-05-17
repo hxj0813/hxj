@@ -50,4 +50,9 @@ sealed class GoalsEvent {
      * 关闭对话框
      */
     object DismissDialog : GoalsEvent()
+    
+    /**
+     * 刷新没有关联任务的目标进度
+     */
+    object RefreshProgress : GoalsEvent()
 } 

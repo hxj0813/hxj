@@ -216,11 +216,24 @@ fun GoalCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "${(animatedProgress * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PrimaryDark
-                )
+                Column {
+                    // 进度百分比
+                    Text(
+                        text = "${(animatedProgress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PrimaryDark
+                    )
+                    
+                    // 为没有关联任务的目标添加时间进度提示
+                    if (!goal.hasLinkedTask && !goal.isCompleted) {
+                        Text(
+                            text = "时间自动计算",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray,
+                            fontSize = 9.sp
+                        )
+                    }
+                }
                 
                 Row(
                     verticalAlignment = Alignment.CenterVertically

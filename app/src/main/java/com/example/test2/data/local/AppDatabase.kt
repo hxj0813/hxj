@@ -62,7 +62,7 @@ import com.example.test2.data.local.migration.DatabaseMigrations
         TimeGoalEntity::class
         // 随着应用扩展，可以在这里添加更多实体
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(DateConverter::class, TimeTrackerConverter::class)
@@ -149,7 +149,8 @@ abstract class AppDatabase : RoomDatabase() {
                 .addMigrations(
                     DatabaseMigrations.MIGRATION_1_2,
                     DatabaseMigrations.MIGRATION_2_3,
-                    DatabaseMigrations.MIGRATION_3_4
+                    DatabaseMigrations.MIGRATION_3_4,
+                    DatabaseMigrations.MIGRATION_4_5
                 )
                 // 当没有找到迁移路径时才使用破坏性迁移
                 .fallbackToDestructiveMigration()

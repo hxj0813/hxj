@@ -16,6 +16,7 @@ import com.example.test2.data.repository.PomodoroTaskRepository
 import com.example.test2.data.repository.TaskLogRepository
 import com.example.test2.data.repository.TaskRepository
 import com.example.test2.data.repository.TaskTagRepository
+import com.example.test2.data.local.prefs.PreferencesHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -123,7 +124,8 @@ class TaskManagerViewModel @Inject constructor(
     private val pomodoroTaskRepository: PomodoroTaskRepository,
     private val taskTagRepository: TaskTagRepository,
     private val taskLogRepository: TaskLogRepository,
-    private val goalRepository: GoalRepository
+    private val goalRepository: GoalRepository,
+    private val preferencesHelper: PreferencesHelper
 ) : ViewModel() {
     
     // 任务列表状态
@@ -263,7 +265,8 @@ class TaskManagerViewModel @Inject constructor(
                                 com.google.gson.Gson().toJson(state.newCheckInFrequencyDays)
                             } else null,
                             reminderEnabled = state.newCheckInReminderEnabled,
-                            reminderTime = state.newCheckInReminderTime
+                            reminderTime = state.newCheckInReminderTime,
+                            todayCompletionsCount = 0
                         )
                         checkInTaskRepository.createCheckInTask(checkInTask)
                     }
@@ -464,26 +467,68 @@ class TaskManagerViewModel @Inject constructor(
     fun completeTask(taskId: String) {
         viewModelScope.launch {
             try {
-                // 更新基础任务状态
-                taskRepository.updateTaskCompletion(taskId, true)
-                
                 val task = taskRepository.getTaskById(taskId)
                 if (task != null) {
-                    // 根据任务类型执行相应操作
-                    when (task.getTaskTypeEnum()) {
+                    val taskType = task.getTaskTypeEnum()
+                    
+                    when (taskType) {
                         TaskType.CHECK_IN -> {
-                            // 更新打卡任务状态
-                            checkInTaskRepository.updateTaskCompletion(taskId, true)
-                            
-                            // 创建打卡日志
-                            taskLogRepository.createLog(
-                                TaskLogEntity.createCheckInLog(
-                                    taskId = taskId
+                            // 获取打卡任务
+                            val checkInTask = checkInTaskRepository.getCheckInTaskById(taskId)
+                            if (checkInTask != null) {
+                                println("DEBUG: 开始完成打卡任务[${taskId}], 当前打卡次数: ${checkInTask.todayCompletionsCount}/${checkInTask.frequencyCount}")
+                                
+                                // 更新打卡任务完成状态
+                                checkInTaskRepository.updateTaskCompletion(taskId, true)
+                                
+                                // 创建打卡日志
+                                taskLogRepository.createLog(
+                                    TaskLogEntity.createCheckInLog(
+                                        taskId = taskId
+                                    )
                                 )
-                            )
+                                
+                                // 计算打卡任务进度
+                                val progress = checkInTask.getCompletionProgress()
+                                println("DEBUG: 打卡任务[${taskId}] 进度: $progress, completedToday: ${checkInTask.completedToday}")
+                                
+                                // 如果已完成所有打卡
+                                if (checkInTask.completedToday || progress >= 1f) {
+                                    println("DEBUG: 打卡任务[${taskId}] 已完成所有打卡，标记为完成")
+                                    taskRepository.updateTaskCompletion(taskId, true)
+                                }
+                                
+                                // 无论是否完成所有打卡，都更新目标进度
+                                println("DEBUG: 每次打卡都更新关联目标进度")
+                                updateGoalProgressIfNeeded(task)
+                            }
                         }
                         TaskType.POMODORO -> {
-                            // 番茄钟任务通常由计时器完成，此处可不处理
+                            // 获取番茄钟任务
+                            val pomodoroTask = pomodoroTaskRepository.getPomodoroTaskById(taskId)
+                            if (pomodoroTask != null) {
+                                // 增加已完成番茄数
+                                pomodoroTaskRepository.incrementCompletedPomodoros(taskId)
+                                
+                                // 如果已完成所有番茄钟，标记任务为已完成
+                                if (pomodoroTask.completedPomodoros + 1 >= pomodoroTask.estimatedPomodoros) {
+                                    taskRepository.updateTaskCompletion(taskId, true)
+                                    
+                                    // 如果关联了目标，更新目标进度
+                                    updateGoalProgressIfNeeded(task)
+                                }
+                            } else {
+                                // 更新基础任务状态
+                                taskRepository.updateTaskCompletion(taskId, true)
+                            }
+                        }
+                        else -> {
+                            // 其他类型任务
+                            // 更新基础任务状态
+                            taskRepository.updateTaskCompletion(taskId, true)
+                            
+                            // 如果关联了目标，更新目标进度
+                            updateGoalProgressIfNeeded(task)
                         }
                     }
                 }
@@ -496,6 +541,129 @@ class TaskManagerViewModel @Inject constructor(
                 )
             }
         }
+    }
+    
+    /**
+     * 如果任务关联了目标，更新目标进度
+     * 一天只更新一次进度
+     */
+    private suspend fun updateGoalProgressIfNeeded(task: TaskEntity) {
+        // 添加调试日志，检查任务是否关联了目标
+        println("DEBUG: 检查任务[${task.id}] 关联目标: ${task.goalId}")
+        
+        task.goalId?.let { goalId ->
+            try {
+                // 获取目标
+                val goal = goalRepository.getGoalById(goalId) ?: return
+                println("DEBUG: 找到关联目标[${goal.id}], 当前进度: ${goal.progress}")
+                
+                // 检查今天是否已经更新过这个目标
+                val lastUpdateDate = preferencesHelper.getGoalLastUpdateDate(goalId)
+                val today = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.time
+                
+                println("DEBUG: 目标[${goalId}] 上次更新时间: ${lastUpdateDate ?: "从未更新"}")
+                
+                // 如果今天已经更新过，不再更新
+                if (lastUpdateDate != null && isSameDay(lastUpdateDate, today)) {
+                    println("DEBUG: 目标[${goalId}] 今天已经更新过，跳过")
+                    return
+                }
+                
+                // 根据任务类型和优先级计算进度增量
+                val progressIncrement = calculateProgressIncrement(task)
+                println("DEBUG: 任务[${task.id}] 计算的进度增量: $progressIncrement")
+                
+                // 计算新的进度
+                val currentProgress = goal.progress
+                val newProgress = (currentProgress + progressIncrement).coerceAtMost(1f)
+                
+                // 更新目标进度
+                val updateSuccess = goalRepository.updateGoalProgress(goalId, newProgress)
+                
+                println("DEBUG: 目标[$goalId]进度更新：$currentProgress -> $newProgress, 更新${if (updateSuccess) "成功" else "失败"}")
+                
+                // 如果进度达到100%，标记目标为已完成
+                if (newProgress >= 1f) {
+                    val completeSuccess = goalRepository.updateGoalCompletionStatus(goalId, true)
+                    println("DEBUG: 目标[$goalId]进度达到100%，标记为完成${if (completeSuccess) "成功" else "失败"}")
+                }
+                
+                // 记录更新日期
+                preferencesHelper.saveGoalLastUpdateDate(goalId, today)
+                println("DEBUG: 保存目标[$goalId]更新日期: $today")
+                
+            } catch (e: Exception) {
+                println("DEBUG: 更新目标进度失败: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    /**
+     * 根据任务类型和优先级计算进度增量
+     * 打卡任务和番茄钟任务有不同的增量计算方式
+     */
+    private suspend fun calculateProgressIncrement(task: TaskEntity): Float {
+        // 基础增量
+        var baseIncrement = 0.05f
+        
+        // 根据任务优先级调整增量
+        val priorityMultiplier = when (task.getPriorityEnum()) {
+            TaskPriority.HIGH -> 1.5f
+            TaskPriority.MEDIUM -> 1.0f
+            TaskPriority.LOW -> 0.8f
+        }
+        
+        // 根据任务类型调整增量
+        when (task.getTaskTypeEnum()) {
+            TaskType.CHECK_IN -> {
+                val checkInTask = checkInTaskRepository.getCheckInTaskById(task.id)
+                if (checkInTask != null) {
+                    // 对于高频率打卡任务，单次增量较小
+                    val frequencyMultiplier = when {
+                        checkInTask.frequencyCount > 5 -> 0.8f
+                        checkInTask.frequencyCount > 2 -> 1.0f
+                        else -> 1.2f
+                    }
+                    
+                    baseIncrement *= frequencyMultiplier
+                }
+            }
+            TaskType.POMODORO -> {
+                val pomodoroTask = pomodoroTaskRepository.getPomodoroTaskById(task.id)
+                if (pomodoroTask != null) {
+                    // 番茄钟任务进度与完成的番茄数有关
+                    val completedPomodoros = pomodoroTask.completedPomodoros
+                    val totalPomodoros = pomodoroTask.estimatedPomodoros
+                    
+                    // 完成超过估计数量的番茄钟，获得额外奖励
+                    val pomodoroMultiplier = if (completedPomodoros >= totalPomodoros) 1.2f else 1.0f
+                    
+                    baseIncrement *= pomodoroMultiplier
+                }
+            }
+            else -> {
+                // 普通任务保持基础增量
+            }
+        }
+        
+        // 应用优先级乘数
+        return baseIncrement * priorityMultiplier
+    }
+    
+    /**
+     * 检查两个日期是否为同一天
+     */
+    private fun isSameDay(date1: Date, date2: Date): Boolean {
+        val cal1 = Calendar.getInstance().apply { time = date1 }
+        val cal2 = Calendar.getInstance().apply { time = date2 }
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
     
     /**
@@ -679,6 +847,13 @@ class TaskManagerViewModel @Inject constructor(
      */
     fun getPomodoroTaskRepository(): PomodoroTaskRepository {
         return pomodoroTaskRepository
+    }
+    
+    /**
+     * 获取打卡任务仓库
+     */
+    fun getCheckInTaskRepository(): CheckInTaskRepository {
+        return checkInTaskRepository
     }
     
     /**

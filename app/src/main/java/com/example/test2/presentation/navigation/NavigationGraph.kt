@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -189,7 +190,23 @@ fun AppNavigationGraph(
                     }
                 )
             ) { entry ->
-                val goalId = entry.arguments?.getLong("goalId") ?: -1L
+                // 获取goalId
+                val rawGoalId = entry.arguments?.getLong("goalId") ?: -1L
+                
+                // 使用NavBackStackEntry的savedStateHandle属性
+                val processedKey = "processed_goal_id_$rawGoalId"
+                val alreadyProcessed = remember { entry.savedStateHandle.contains(processedKey) }
+                val effectiveGoalId = remember {
+                    if (alreadyProcessed) {
+                        -1L // 已经处理过这个goalId，返回默认值
+                    } else if (rawGoalId > 0) {
+                        // 标记为已处理
+                        entry.savedStateHandle[processedKey] = true
+                        rawGoalId
+                    } else {
+                        -1L
+                    }
+                }
                 
                 TasksScreen(
                     onNavigateToDetail = { taskId ->
@@ -198,7 +215,14 @@ fun AppNavigationGraph(
                     onNavigateToStatistics = {
                         navController.navigate(NavRoute.TaskStatistics.route)
                     },
-                    initialGoalId = if (goalId != -1L) goalId else null
+                    initialGoalId = if (effectiveGoalId > 0) effectiveGoalId else null,
+                    onTaskCreated = {
+                        // 当任务创建完成时，清除已处理的goalId
+                        if (rawGoalId > 0) {
+                            // 重置状态
+                            entry.savedStateHandle.remove<Boolean>(processedKey)
+                        }
+                    }
                 )
             }
             
@@ -224,7 +248,8 @@ fun AppNavigationGraph(
                     },
                     onStart = { taskId ->
                         navController.navigate(NavRoute.PomodoroSession.createRoute(taskId.toString()))
-                    }
+                    },
+                    navBackStackEntry = entry
                 )
             }
             
@@ -245,6 +270,8 @@ fun AppNavigationGraph(
                         navController.popBackStack()
                     },
                     onFinish = {
+                        // 返回并携带成功标记
+                        navController.previousBackStackEntry?.savedStateHandle?.set("showPomodoroSuccessMessage", true)
                         navController.popBackStack()
                     }
                 )

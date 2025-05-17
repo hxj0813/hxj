@@ -244,4 +244,15 @@ object DatabaseMigrations {
             database.execSQL("ALTER TABLE notes ADD COLUMN imagesJson TEXT NOT NULL DEFAULT '[]'")
         }
     }
+    
+    /**
+     * 从版本4迁移到版本5
+     * 处理CheckInTaskEntity架构变更
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // 这是一个空迁移，因为我们实际上只是修复了代码中的重复字段，而不需要对表结构进行变更
+            // 但仍需要增加版本号以更新 Room 期望的架构哈希值
+        }
+    }
 } 

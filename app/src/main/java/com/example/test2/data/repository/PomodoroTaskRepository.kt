@@ -1,12 +1,14 @@
 package com.example.test2.data.repository
 
 import com.example.test2.data.local.dao.PomodoroTaskDao
+import com.example.test2.data.local.dao.TaskLogDao
 import com.example.test2.data.local.entity.PomodoroTaskEntity
 import com.example.test2.data.local.entity.TagCategory
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.Calendar
 
 /**
  * 番茄钟任务仓库类
@@ -14,7 +16,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class PomodoroTaskRepository @Inject constructor(
-    private val pomodoroTaskDao: PomodoroTaskDao
+    private val pomodoroTaskDao: PomodoroTaskDao,
+    private val taskLogDao: TaskLogDao
 ) {
     /**
      * 通过任务ID获取番茄钟任务
@@ -95,6 +98,31 @@ class PomodoroTaskRepository @Inject constructor(
     }
     
     /**
+     * 获取今日特定任务的完成番茄钟数量
+     * @param taskId 任务ID
+     * @return 今日完成的番茄钟数量
+     */
+    suspend fun getTodayPomodoroCount(taskId: String): Int {
+        val calendar = Calendar.getInstance()
+        // 设置为今天的开始时间
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.time
+        
+        // 设置为今天的结束时间
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.time
+        
+        // 从任务日志表中查询今日这个任务的番茄钟完成数量
+        return taskLogDao.getTaskPomodoroCountInDateRange(taskId, startOfDay, endOfDay) ?: 0
+    }
+    
+    /**
      * 创建番茄钟任务
      */
     suspend fun createPomodoroTask(pomodoroTask: PomodoroTaskEntity) {
@@ -128,6 +156,13 @@ class PomodoroTaskRepository @Inject constructor(
      */
     suspend fun resetAllCompletedPomodoros() {
         pomodoroTaskDao.resetAllCompletedPomodoros()
+    }
+    
+    /**
+     * 增加已完成番茄钟数量
+     */
+    suspend fun incrementCompletedPomodoros(taskId: String) {
+        pomodoroTaskDao.incrementCompletedPomodoros(taskId)
     }
     
     /**

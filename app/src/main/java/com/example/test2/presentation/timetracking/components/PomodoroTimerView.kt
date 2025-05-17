@@ -109,9 +109,17 @@ fun PomodoroTimerView(
     }
     
     LaunchedEffect(progress) {
+        // 检查progress是否是有效值，避免NaN导致的崩溃
+        val validProgress = when {
+            progress.isNaN() -> 0f // 如果是NaN，使用0作为默认值
+            progress < 0f -> 0f // 如果小于0，使用0
+            progress > 1f -> 1f // 如果大于1，使用1
+            else -> progress // 否则使用原始值
+        }
+        
         coroutineScope.launch {
             animatedProgress.animateTo(
-                targetValue = progress,
+                targetValue = validProgress,
                 animationSpec = tween(
                     durationMillis = 300,
                     easing = LinearEasing

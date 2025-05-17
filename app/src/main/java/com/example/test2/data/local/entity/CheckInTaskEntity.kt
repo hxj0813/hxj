@@ -40,6 +40,7 @@ data class CheckInTaskEntity(
     
     // 状态相关
     val completedToday: Boolean = false, // 今日是否已完成
+    val todayCompletionsCount: Int = 0, // 今日已完成次数
     val lastCompletedDate: Date? = null, // 最后一次完成时间
     val streakStartDate: Date? = null, // 连续打卡开始日期
     
@@ -105,7 +106,10 @@ data class CheckInTaskEntity(
      */
     fun getCompletionProgress(): Float {
         return when(getFrequencyTypeEnum()) {
-            FrequencyType.DAILY -> if (completedToday) 1f else 0f
+            FrequencyType.DAILY -> {
+                if (frequencyCount <= 0) return 0f
+                minOf(todayCompletionsCount.toFloat() / frequencyCount.toFloat(), 1f)
+            }
             FrequencyType.WEEKLY -> {
                 val completedDays = if (completedToday) 1 else 0
                 completedDays.toFloat() / frequencyCount.toFloat()
@@ -131,6 +135,7 @@ data class CheckInTaskEntity(
                 taskId = taskId,
                 frequencyType = FrequencyType.DAILY.ordinal,
                 frequencyCount = 1,
+                todayCompletionsCount = 0,
                 reminderEnabled = reminderEnabled,
                 reminderTime = reminderTime
             )
@@ -152,6 +157,7 @@ data class CheckInTaskEntity(
                 frequencyType = FrequencyType.WEEKLY.ordinal,
                 frequencyCount = daysOfWeek.size,
                 frequencyDaysJson = daysJson,
+                todayCompletionsCount = 0,
                 reminderEnabled = reminderEnabled,
                 reminderTime = reminderTime
             )
@@ -173,6 +179,7 @@ data class CheckInTaskEntity(
                 frequencyType = FrequencyType.MONTHLY.ordinal,
                 frequencyCount = daysOfMonth.size,
                 frequencyDaysJson = daysJson,
+                todayCompletionsCount = 0,
                 reminderEnabled = reminderEnabled,
                 reminderTime = reminderTime
             )
@@ -191,6 +198,7 @@ data class CheckInTaskEntity(
                 taskId = taskId,
                 frequencyType = FrequencyType.CUSTOM.ordinal,
                 frequencyCount = intervalDays,
+                todayCompletionsCount = 0,
                 reminderEnabled = reminderEnabled,
                 reminderTime = reminderTime
             )

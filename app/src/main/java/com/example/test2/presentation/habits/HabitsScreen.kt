@@ -50,11 +50,8 @@ fun HabitsScreen(
     
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 顶部应用栏
-            HabitsTopBar(
-                onSearchClick = { /* 打开搜索 */ },
-                onFilterClick = { /* 打开筛选 */ }
-            )
+            // 简化的顶部栏，不包含搜索和筛选图标
+            HabitsTopBar()
             
             // 分类筛选栏
             CategoryFilterBar(
@@ -140,26 +137,9 @@ fun HabitsScreen(
 }
 
 @Composable
-fun HabitsTopBar(
-    onSearchClick: () -> Unit,
-    onFilterClick: () -> Unit
-) {
+fun HabitsTopBar() {
     TopAppBar(
         title = { Text("习惯养成") },
-        actions = {
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "搜索"
-                )
-            }
-            IconButton(onClick = onFilterClick) {
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = "筛选"
-                )
-            }
-        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant

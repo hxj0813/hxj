@@ -139,6 +139,16 @@ interface PomodoroTaskDao {
     suspend fun addFocusTime(taskId: String, focusMinutes: Int, pomodoroCount: Int, sessionDate: Date)
     
     /**
+     * 增加已完成的番茄钟数量
+     */
+    @Query("""
+        UPDATE pomodoro_tasks
+        SET completedPomodoros = completedPomodoros + 1
+        WHERE taskId = :taskId
+    """)
+    suspend fun incrementCompletedPomodoros(taskId: String)
+    
+    /**
      * 重置所有番茄钟任务的已完成番茄数
      * 通常由定时任务在每天零点调用
      */
