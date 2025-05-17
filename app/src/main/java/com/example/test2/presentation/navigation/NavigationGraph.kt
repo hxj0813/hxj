@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -37,6 +38,8 @@ import androidx.navigation.navArgument
 // import com.example.test2.presentation.note.NoteScreen
 import com.example.test2.presentation.habits.HabitsScreen
 import com.example.test2.presentation.habits.NotesScreen
+import com.example.test2.presentation.habits.BadgeScreen
+import com.example.test2.presentation.habits.HabitDetailScreen
 import com.example.test2.presentation.goals.GoalsScreen
 import com.example.test2.presentation.tasks.TaskDetailScreen
 import com.example.test2.presentation.tasks.TaskStatisticsScreen
@@ -84,6 +87,11 @@ sealed class NavRoute(val route: String) {
     // 习惯相关子路由
     object HabitDetail : NavRoute("habit_detail/{habitId}") {
         fun createRoute(habitId: String) = "habit_detail/$habitId"
+    }
+    
+    // 徽章相关子路由
+    object Badges : NavRoute("badges") {
+        fun createRoute() = "badges"
     }
     
     // 反思笔记子路由
@@ -295,7 +303,47 @@ fun AppNavigationGraph(
             
             // 习惯养成
             composable(route = NavRoute.Habits.route) {
-                HabitsScreen()
+                HabitsScreen(
+                    onNavigateToDetail = { habitId ->
+                        navController.navigate(NavRoute.HabitDetail.createRoute(habitId))
+                    },
+                    onNavigateToBadges = {
+                        navController.navigate(NavRoute.Badges.createRoute())
+                    }
+                )
+            }
+            
+            // 习惯详情
+            composable(
+                route = NavRoute.HabitDetail.route,
+                arguments = listOf(
+                    navArgument("habitId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { entry ->
+                val habitId = entry.arguments?.getString("habitId") ?: ""
+                
+                HabitDetailScreen(
+                    habitId = habitId,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onEditHabit = { habitId ->
+                        // 返回到习惯列表并带着编辑标记
+                        navController.previousBackStackEntry?.savedStateHandle?.set("habitToEdit", habitId)
+                        navController.popBackStack()
+                    }
+                )
+            }
+            
+            // 徽章收藏页面
+            composable(route = NavRoute.Badges.route) {
+                BadgeScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
             }
             
             // 目标管理
@@ -325,8 +373,6 @@ fun AppNavigationGraph(
             
             // TODO: 添加时间追踪详情页面
             // TODO: 添加目标详情页面
-            // TODO: 添加习惯详情页面
-            // TODO: 添加反思笔记详情页面
             // TODO: 添加其他必要的页面
         }
     }

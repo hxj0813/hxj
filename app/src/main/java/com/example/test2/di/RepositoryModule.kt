@@ -2,8 +2,12 @@ package com.example.test2.di
 
 import android.content.Context
 import com.example.test2.data.local.AppDatabase
+import com.example.test2.data.local.dao.BadgeDao
 import com.example.test2.data.local.dao.GoalDao
 import com.example.test2.data.local.dao.NoteDao
+import com.example.test2.data.local.dao.UserBadgeDao
+import com.example.test2.data.repository.BadgeRepository
+import com.example.test2.data.repository.BadgeRepositoryImpl
 import com.example.test2.data.repository.GoalRepository
 import com.example.test2.data.repository.NoteRepository
 import com.example.test2.data.repository.TimeEntryRepository
@@ -67,6 +71,19 @@ object RepositoryModule {
         return TimeTrackingRepository(
             timeTrackingDao = db.timeTrackingDao()
         )
+    }
+    
+    /**
+     * 提供BadgeRepository实例
+     * 使用BadgeRepositoryImpl作为具体实现
+     */
+    @Provides
+    @Singleton
+    fun provideBadgeRepository(
+        badgeDao: BadgeDao,
+        userBadgeDao: UserBadgeDao
+    ): BadgeRepository {
+        return BadgeRepositoryImpl(badgeDao, userBadgeDao)
     }
     
     // 注意：TaskRepository, CheckInTaskRepository, PomodoroTaskRepository,

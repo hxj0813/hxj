@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.test2.data.local.entity.FrequencyType
@@ -43,7 +44,8 @@ data class HabitsState(
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val habitRepository: HabitRepository,
-    private val badgeService: BadgeService
+    private val badgeService: BadgeService,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
     // 内部状态
@@ -90,6 +92,43 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             filteredHabits.collect { habits ->
                 _state.value = _state.value.copy(habits = habits)
+            }
+        }
+    }
+    
+    /**
+     * 根据ID获取习惯
+     */
+    suspend fun getHabitById(habitId: String): HabitEntity? {
+        return habitRepository.getHabitById(habitId).first()
+    }
+    
+    /**
+     * 获取从导航传递的需要编辑的习惯ID
+     */
+    fun getHabitToEditFromNavigation(): String? {
+        val habitId = savedStateHandle.get<String>("habitToEdit")
+        if (habitId != null) {
+            // 消费一次后移除，避免重复触发
+            savedStateHandle.remove<String>("habitToEdit")
+        }
+        return habitId
+    }
+    
+    /**
+     * 获取习惯并在UI线程中处理
+     */
+    fun loadHabitForEdit(habitId: String) {
+        viewModelScope.launch {
+            try {
+                val habit = habitRepository.getHabitById(habitId).first()
+                if (habit != null) {
+                    showEditHabitForm(habit)
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    error = "加载习惯失败: ${e.message}"
+                )
             }
         }
     }

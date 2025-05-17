@@ -7,7 +7,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.test2.data.local.entity.BadgeEntity
-import com.example.test2.data.local.entity.BadgeType
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -18,14 +17,20 @@ interface BadgeDao {
     /**
      * 获取所有徽章
      */
-    @Query("SELECT * FROM badges ORDER BY rarity DESC, name ASC")
+    @Query("SELECT * FROM badges ORDER BY category, rarity")
     fun getAllBadges(): Flow<List<BadgeEntity>>
     
     /**
-     * 获取非隐藏徽章
+     * 获取指定类别的徽章
      */
-    @Query("SELECT * FROM badges WHERE isHidden = 0 ORDER BY rarity DESC, name ASC")
-    fun getVisibleBadges(): Flow<List<BadgeEntity>>
+    @Query("SELECT * FROM badges WHERE category = :category ORDER BY rarity")
+    fun getBadgesByCategory(category: Int): Flow<List<BadgeEntity>>
+    
+    /**
+     * 获取指定稀有度的徽章
+     */
+    @Query("SELECT * FROM badges WHERE rarity = :rarity ORDER BY category")
+    fun getBadgesByRarity(rarity: Int): Flow<List<BadgeEntity>>
     
     /**
      * 根据ID获取徽章
@@ -34,49 +39,37 @@ interface BadgeDao {
     suspend fun getBadgeById(badgeId: String): BadgeEntity?
     
     /**
-     * 根据类型获取徽章列表
+     * 获取所有默认徽章
      */
-    @Query("SELECT * FROM badges WHERE type = :type ORDER BY requiredValue ASC")
-    fun getBadgesByType(type: Int): Flow<List<BadgeEntity>>
+    @Query("SELECT * FROM badges WHERE isDefault = 1")
+    fun getDefaultBadges(): Flow<List<BadgeEntity>>
     
     /**
-     * 根据稀有度获取徽章列表
+     * 获取非隐藏徽章
      */
-    @Query("SELECT * FROM badges WHERE rarity = :rarity ORDER BY name ASC")
-    fun getBadgesByRarity(rarity: Int): Flow<List<BadgeEntity>>
-    
-    /**
-     * 获取特定类别习惯的徽章
-     */
-    @Query("SELECT * FROM badges WHERE requiredCategoryId = :categoryId OR requiredCategoryId IS NULL")
-    fun getBadgesForCategory(categoryId: Int): Flow<List<BadgeEntity>>
-    
-    /**
-     * 获取连续打卡达到特定天数的徽章
-     */
-    @Query("SELECT * FROM badges WHERE type = :badgeType AND requiredValue <= :streakValue ORDER BY requiredValue DESC LIMIT 1")
-    suspend fun getBadgeForStreak(badgeType: Int, streakValue: Int): BadgeEntity?
+    @Query("SELECT * FROM badges WHERE isSecret = 0 ORDER BY category, rarity")
+    fun getVisibleBadges(): Flow<List<BadgeEntity>>
     
     /**
      * 获取所有连续打卡徽章，按所需值排序
      */
-    @Query("SELECT * FROM badges WHERE type = :badgeType ORDER BY requiredValue ASC")
-    fun getAllStreakBadges(badgeType: Int): Flow<List<BadgeEntity>>
+    @Query("SELECT * FROM badges WHERE category = :badgeCategory ORDER BY thresholdValue ASC")
+    fun getAllStreakBadges(badgeCategory: Int): Flow<List<BadgeEntity>>
     
     /**
      * 根据类别获取下一个可解锁的徽章
      */
-    @Query("SELECT * FROM badges WHERE requiredCategoryId = :categoryId AND requiredValue > :currentValue ORDER BY requiredValue ASC LIMIT 1")
+    @Query("SELECT * FROM badges WHERE category = :categoryId AND thresholdValue > :currentValue ORDER BY thresholdValue ASC LIMIT 1")
     suspend fun getNextBadgeForCategory(categoryId: Int, currentValue: Int): BadgeEntity?
     
     /**
-     * 插入徽章
+     * 添加徽章
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBadge(badge: BadgeEntity)
     
     /**
-     * 批量插入徽章
+     * 批量添加徽章
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBadges(badges: List<BadgeEntity>)
@@ -94,14 +87,14 @@ interface BadgeDao {
     suspend fun deleteBadge(badge: BadgeEntity)
     
     /**
-     * 根据类型获取最高级徽章
+     * 根据类别获取最高级徽章
      */
-    @Query("SELECT * FROM badges WHERE type = :type ORDER BY requiredValue DESC, rarity DESC LIMIT 1")
-    suspend fun getHighestBadgeByType(type: Int): BadgeEntity?
+    @Query("SELECT * FROM badges WHERE category = :category ORDER BY thresholdValue DESC, rarity DESC LIMIT 1")
+    suspend fun getHighestBadgeByType(category: Int): BadgeEntity?
     
     /**
      * 获取特定条件值可解锁的徽章
      */
-    @Query("SELECT * FROM badges WHERE type = :type AND requiredValue <= :value ORDER BY requiredValue DESC LIMIT 1")
-    suspend fun getBadgeForValue(type: Int, value: Int): BadgeEntity?
+    @Query("SELECT * FROM badges WHERE category = :category AND thresholdValue <= :value ORDER BY thresholdValue DESC LIMIT 1")
+    suspend fun getBadgeForValue(category: Int, value: Int): BadgeEntity?
 } 

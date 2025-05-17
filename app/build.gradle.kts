@@ -88,4 +88,8 @@ dependencies {
 
     implementation("com.airbnb.android:lottie-compose:6.0.0")
 
+    implementation(libs.accompanist.pager)
+    implementation(libs.accompanist.pager.indicators)
+
+
 }

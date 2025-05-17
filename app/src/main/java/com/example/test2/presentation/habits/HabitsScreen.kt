@@ -42,7 +42,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
  */
 @Composable
 fun HabitsScreen(
-    viewModel: HabitsViewModel = hiltViewModel()
+    viewModel: HabitsViewModel = hiltViewModel(),
+    onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToBadges: () -> Unit = {}
 ) {
     val state = viewModel.state.value
     val habits by viewModel.filteredHabits.collectAsState()
@@ -51,7 +53,9 @@ fun HabitsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 简化的顶部栏，不包含搜索和筛选图标
-            HabitsTopBar()
+            HabitsTopBar(
+                onNavigateToBadges = onNavigateToBadges
+            )
             
             // 分类筛选栏
             CategoryFilterBar(
@@ -67,7 +71,7 @@ fun HabitsScreen(
             } else {
                 HabitsList(
                     habits = habits,
-                    onHabitClick = { /* 查看详情 */ },
+                    onHabitClick = { habit -> onNavigateToDetail(habit.id) },
                     onCompleteClick = { habit, completed -> 
                         viewModel.completeHabit(habit.id, completed) 
                     },
@@ -133,17 +137,36 @@ fun HabitsScreen(
                 viewModel.clearError()
             }
         }
+        
+        // 检查是否有从详情页返回时需要编辑的习惯
+        LaunchedEffect(Unit) {
+            val habitId = viewModel.getHabitToEditFromNavigation()
+            if (habitId != null) {
+                viewModel.loadHabitForEdit(habitId)
+            }
+        }
     }
 }
 
 @Composable
-fun HabitsTopBar() {
+fun HabitsTopBar(
+    onNavigateToBadges: () -> Unit = {}
+) {
     TopAppBar(
         title = { Text("习惯养成") },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        ),
+        actions = {
+            // 徽章收藏按钮
+            IconButton(onClick = onNavigateToBadges) {
+                Icon(
+                    imageVector = Icons.Default.EmojiEvents,
+                    contentDescription = "徽章收藏"
+                )
+            }
+        }
     )
 }
 
