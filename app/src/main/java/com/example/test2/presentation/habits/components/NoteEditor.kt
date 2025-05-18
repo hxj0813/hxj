@@ -44,6 +44,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +69,7 @@ import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteImage
+import com.example.test2.data.model.InlineContent
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -118,6 +120,24 @@ fun NoteEditor(
         }
     }
     
+    // 记住富文本内容列表
+    val inlineContentList = remember { 
+        mutableStateListOf<InlineContent>().apply {
+            // 如果有现有笔记，使用其富文本内容
+            if (existingNote != null) {
+                addAll(existingNote.getInlineContentList())
+            }
+        }
+    }
+    
+    // 当前焦点内容的ID
+    var focusedContentId by remember { mutableStateOf<String?>(null) }
+    
+    // 更新纯文本内容（用于兼容旧版本）
+    LaunchedEffect(inlineContentList.toList()) {
+        content = InlineContent.contentListToString(inlineContentList)
+    }
+    
     // 图片选择器
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -127,6 +147,81 @@ fun NoteEditor(
     
     // 是否为编辑模式
     val isEditMode = existingNote != null
+    
+    /**
+     * 将图片添加到富文本内容
+     */
+    fun addImageToRichContent(newImage: NoteImage) {
+        android.util.Log.d("NoteEditor", "处理新图片: ID=${newImage.id}, URI=${newImage.uri}")
+        
+        // 记录富文本内容信息
+        android.util.Log.d("NoteEditor", "当前富文本包含 ${inlineContentList.size} 个内容块")
+        
+        // 创建内联图片内容
+        val imageContent = InlineContent.Image(
+            id = UUID.randomUUID().toString(),
+            noteImage = newImage,
+            altText = ""
+        )
+        
+        // 获取当前的内容列表（转成可变列表）
+        val updatedContentList = if (inlineContentList.isEmpty()) {
+            // 如果内容为空，先添加一个空文本，再添加图片，然后再添加一个空文本
+            android.util.Log.d("NoteEditor", "内容为空，创建新的内容结构")
+            mutableListOf(
+                InlineContent.Text(content = ""),
+                imageContent,
+                InlineContent.Text(content = "")
+            )
+        } else {
+            // 转换为可变列表并找到最后一个文本内容
+            val mutableList = inlineContentList.toMutableList()
+            val textIndex = mutableList.indexOfLast { it is InlineContent.Text }
+            
+            if (textIndex >= 0) {
+                android.util.Log.d("NoteEditor", "在文本块 $textIndex 后插入图片")
+                // 在文本后插入图片
+                mutableList.add(textIndex + 1, imageContent)
+                // 确保图片后有文本块
+                if (textIndex + 2 >= mutableList.size || mutableList[textIndex + 2] !is InlineContent.Text) {
+                    android.util.Log.d("NoteEditor", "在图片后添加新文本块")
+                    mutableList.add(textIndex + 2, InlineContent.Text(content = ""))
+                }
+            } else {
+                // 没有文本块，直接添加到末尾，并确保有文本块
+                android.util.Log.d("NoteEditor", "没有文本块，将图片添加到末尾")
+                mutableList.add(imageContent)
+                mutableList.add(InlineContent.Text(content = ""))
+            }
+            mutableList
+        }
+        
+        // 更新内容列表并记录日志
+        android.util.Log.d("NoteEditor", "更新后的富文本包含 ${updatedContentList.size} 个内容块")
+        // 记录所有内容类型
+        updatedContentList.forEachIndexed { index, content ->
+            when (content) {
+                is InlineContent.Text -> 
+                    android.util.Log.d("NoteEditor", "Content[$index]: Text with ${content.content.length} chars")
+                is InlineContent.Image -> 
+                    android.util.Log.d("NoteEditor", "Content[$index]: Image with ID=${content.noteImage.id}")
+            }
+        }
+        
+        // 清除并重新添加内容
+        inlineContentList.clear()
+        inlineContentList.addAll(updatedContentList)
+        
+        // 生成并记录当前的JSON内容，用于调试
+        val currentJson = InlineContent.contentListToJson(inlineContentList)
+        android.util.Log.d("NoteEditor", "当前富文本JSON (${currentJson.length} chars)")
+        // 验证是否包含图片内容
+        if (currentJson.contains("\"type\":\"image\"")) {
+            android.util.Log.d("NoteEditor", "JSON中包含图片内容")
+        } else {
+            android.util.Log.e("NoteEditor", "错误：JSON中未包含图片内容！")
+        }
+    }
     
     // 创建骨架
     Scaffold(
@@ -150,7 +245,7 @@ fun NoteEditor(
                     // 添加图片按钮
                     IconButton(
                         onClick = { imagePicker.launch("image/*") },
-                        enabled = !isImageProcessing && existingNote?.images?.size ?: 0 < 10
+                        enabled = !isImageProcessing && images.size < 10
                     ) {
                         if (isImageProcessing) {
                             CircularProgressIndicator(
@@ -211,10 +306,21 @@ fun NoteEditor(
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
                     
-                    // 内容编辑器
-                    ContentEditor(
-                        content = content,
-                        onContentChange = { content = it }
+                    // 富文本编辑器
+                    RichTextEditor(
+                        initialContent = inlineContentList.toList(),
+                        onContentChanged = { newContent ->
+                            inlineContentList.clear()
+                            inlineContentList.addAll(newContent)
+                        },
+                        onAddImage = { /* 不执行任何操作 */ },
+                        onRemoveImage = { image ->
+                            onRemoveImage(image)
+                            images.remove(image)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp)
                     )
                 }
             }
@@ -240,77 +346,34 @@ fun NoteEditor(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // 图片选择器
-            if (existingNote?.images?.isNotEmpty() == true || images.isNotEmpty()) {
-                // 显示图片列表 - 根据编辑状态选择合适的图片列表
-                ImageSelectorGrid(
-                    images = existingNote?.images ?: images.toList(),
-                    onAddImage = { imagePicker.launch("image/*") },
-                    onRemoveImage = onRemoveImage,
-                    onImageClick = onViewImage
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            
             // 保存按钮
             Button(
                 onClick = {
-                    // 日志记录原始图片信息
-                    if (isEditMode) {
-                        existingNote!!.images.forEachIndexed { index, image ->
-                            android.util.Log.d("NoteEditor", "保存已有图片[$index]: ${image.uri}")
-                            android.util.Log.d("NoteEditor", "图片文件是否存在: ${image.isValidFile()}")
-                        }
-                    } else {
-                        images.forEachIndexed { index, image ->
-                            android.util.Log.d("NoteEditor", "保存新图片[$index]: ${image.uri}")
-                            android.util.Log.d("NoteEditor", "图片文件是否存在: ${image.isValidFile()}")
-                        }
-                    }
+                    // 生成富文本内容的JSON字符串
+                    val richContentJson = InlineContent.contentListToJson(inlineContentList.toList())
                     
                     val note = if (isEditMode) {
-                        // 在编辑模式下，必须确保所有字段都正确复制
+                        // 编辑模式
                         existingNote!!.copy(
                             title = title,
-                            content = content,
+                            content = content, // 兼容纯文本
+                            richContent = richContentJson, // 富文本内容
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            // 保持原有图片列表不变
-                            images = existingNote.images.map { image ->
-                                // 确保图片URI是绝对路径格式
-                                val filePath = image.getFilePath()
-                                if (filePath != null) {
-                                    // 如果能获取到文件路径，使用绝对路径
-                                    image.copy(uri = filePath)
-                                } else {
-                                    // 否则保持原样
-                                    image
-                                }
-                            },
-                            // 更新时间戳
+                            images = images.toList(), // 使用当前图片列表
                             updatedAt = LocalDateTime.now().toDate()
                         )
                     } else {
-                        // 创建全新的笔记
+                        // 创建模式
                         HabitNote(
                             id = UUID.randomUUID().toString(),
                             habitId = habitId,
                             title = title,
-                            content = content,
+                            content = content, // 兼容纯文本
+                            richContent = richContentJson, // 富文本内容
                             mood = selectedMood,
                             tags = selectedTags.toList(),
-                            // 处理新图片，确保使用绝对路径
-                            images = images.map { image ->
-                                val filePath = image.getFilePath()
-                                if (filePath != null) {
-                                    // 如果能获取到文件路径，使用绝对路径
-                                    image.copy(uri = filePath)
-                                } else {
-                                    // 否则保持原样
-                                    image
-                                }
-                            },
+                            images = images.toList(),
                             createdAt = LocalDateTime.now().toDate(),
                             updatedAt = LocalDateTime.now().toDate()
                         )
@@ -326,7 +389,7 @@ fun NoteEditor(
                     // 保存笔记
                     onSave(note)
                 },
-                enabled = title.isNotBlank() && content.isNotBlank(),
+                enabled = title.isNotBlank() && inlineContentList.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -348,6 +411,71 @@ fun NoteEditor(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
+            }
+        }
+    }
+    
+    // 处理图片添加事件
+    LaunchedEffect(existingNote) {
+        // 当编辑的笔记发生变化时（比如添加了图片）
+        existingNote?.let { note ->
+            // 获取当前显示的图片ID
+            val currentImageIds = inlineContentList
+                .filterIsInstance<InlineContent.Image>()
+                .map { it.noteImage.id }
+                .toSet()
+            
+            // 获取笔记中的图片ID
+            val noteImageIds = note.images.map { it.id }.toSet()
+            
+            // 找到新添加的图片
+            val newImages = note.images.filter { image -> 
+                image.id !in currentImageIds 
+            }
+            
+            if (newImages.isNotEmpty()) {
+                android.util.Log.d("NoteEditor", "检测到笔记中有 ${newImages.size} 张新图片，添加到富文本内容中")
+                
+                // 将新图片添加到富文本内容
+                newImages.forEach { newImage ->
+                    addImageToRichContent(newImage)
+                }
+            }
+        }
+    }
+    
+    // 处理图片添加事件
+    LaunchedEffect(existingNote?.images) {
+        // 省略原有代码...当外部图片列表更新时，更新本地图片列表
+        if (existingNote != null && existingNote.images.isNotEmpty()) {
+            // 保存当前图片数量用于检测变化
+            val currentSize = images.size
+            
+            // 清除并重新添加所有图片
+            images.clear()
+            images.addAll(existingNote.images)
+            
+            android.util.Log.d("NoteEditor", "从外部更新图片列表，之前 $currentSize 张，现在 ${images.size} 张")
+        }
+    }
+    
+    // 处理新图片添加
+    LaunchedEffect(images.size) {
+        // 当本地图片列表大小变化时，可能是通过按钮直接添加的图片
+        if (existingNote == null || images.size > (existingNote.images.size)) {
+            // 找出新添加的图片
+            val newImages = images.filter { image ->
+                // 不在当前富文本内容中
+                inlineContentList.none { content -> 
+                    content is InlineContent.Image && content.noteImage.id == image.id
+                }
+            }
+            
+            android.util.Log.d("NoteEditor", "检测到本地添加的 ${newImages.size} 张新图片")
+            
+            // 处理所有新图片
+            newImages.forEach { newImage ->
+                addImageToRichContent(newImage)
             }
         }
     }
@@ -397,75 +525,6 @@ fun TitleEditor(
             }
         }
     )
-}
-
-/**
- * 内容编辑器组件
- */
-@Composable
-fun ContentEditor(
-    content: String,
-    onContentChange: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // 编辑器工具栏（可以实现富文本编辑功能，这里只是一个装饰）
-//        Row(
-//            horizontalArrangement = Arrangement.Start,
-//            verticalAlignment = Alignment.CenterVertically,
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(bottom = 8.dp)
-//        ) {
-//            // 样式指示器 - 在实际应用中可以实现富文本功能
-//            FormatIndicator("B", MaterialTheme.colorScheme.primary, isBold = true)
-//            FormatIndicator("I", MaterialTheme.colorScheme.primary)
-//            FormatIndicator("U", MaterialTheme.colorScheme.primary)
-//        }
-
-        // 使用BasicTextField实现自定义样式
-        BasicTextField(
-            value = content,
-            onValueChange = onContentChange,
-            textStyle = TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp,
-                fontFamily = FontFamily.Serif,
-                lineHeight = 24.sp
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                keyboardType = KeyboardType.Text
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    // 可以在此处处理完成操作
-                }
-            ),
-            decorationBox = { innerTextField ->
-                Box {
-                    // 占位文本
-                    if (content.isEmpty()) {
-                        Text(
-                            text = "在这里记录你的想法和感受...",
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            fontSize = 16.sp,
-                            fontFamily = FontFamily.Serif,
-                            lineHeight = 24.sp
-                        )
-                    }
-                    
-                    // 实际的文本字段
-                    innerTextField()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-        )
-    }
 }
 
 /**

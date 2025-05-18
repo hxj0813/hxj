@@ -15,6 +15,7 @@ data class NotesState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isImageProcessing: Boolean = false,
+    val isIndexing: Boolean = false, // 是否正在创建索引
     val error: String? = null,
     val selectedNote: HabitNote? = null,
     val showNoteDetail: Boolean = false,
@@ -47,7 +48,7 @@ data class NotesState(
      * 判断是否显示空状态
      */
     val showEmptyState: Boolean 
-        get() = !isLoading && filteredNotes.isEmpty()
+        get() = !isLoading && filteredNotes.isEmpty() && error == null
     
     /**
      * 判断是否正在处理过程中

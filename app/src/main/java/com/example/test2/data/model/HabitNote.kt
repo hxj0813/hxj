@@ -14,6 +14,7 @@ import java.util.UUID
  * @property habitId 关联的习惯ID
  * @property title 笔记标题
  * @property content 笔记内容
+ * @property richContent 富文本内容的JSON字符串
  * @property mood 记录笔记时的心情
  * @property tags 笔记标签列表
  * @property images 笔记图片列表
@@ -26,6 +27,7 @@ data class HabitNote(
     val habitId: String,
     val title: String,
     val content: String,
+    val richContent: String = "",
     val mood: NoteMood = NoteMood.NEUTRAL,
     val tags: List<NoteTag> = emptyList(),
     val images: List<NoteImage> = emptyList(),
@@ -33,6 +35,45 @@ data class HabitNote(
     val updatedAt: Date,
     val isPinned: Boolean = false
 ) {
+    /**
+     * 获取内联内容列表
+     */
+    fun getInlineContentList(): List<InlineContent> {
+        return if (richContent.isNotEmpty()) {
+            try {
+                android.util.Log.d("HabitNote", "解析富文本内容，长度: ${richContent.length}")
+                val result = InlineContent.parseFromJson(richContent, images)
+                
+                // 记录解析结果
+                val textCount = result.count { it is InlineContent.Text }
+                val imageCount = result.count { it is InlineContent.Image }
+                android.util.Log.d("HabitNote", "解析结果: ${result.size} 个内容块 ($textCount 文本, $imageCount 图片)")
+                
+                // 如果有图片，确认图片是否有效
+                if (imageCount > 0) {
+                    val imageIds = result.filterIsInstance<InlineContent.Image>()
+                        .map { it.noteImage.id }
+                    val existingIds = images.map { it.id }
+                    val allImagesValid = imageIds.all { id -> existingIds.contains(id) }
+                    
+                    android.util.Log.d("HabitNote", "图片有效性检查: $allImagesValid")
+                    if (!allImagesValid) {
+                        android.util.Log.w("HabitNote", "警告: 富文本内容中包含不存在的图片ID")
+                    }
+                }
+                
+                result
+            } catch (e: Exception) {
+                android.util.Log.e("HabitNote", "解析富文本内容失败: ${e.message}")
+                // 解析失败时，回退到纯文本
+                InlineContent.fromPlainText(content)
+            }
+        } else {
+            // 如果没有富文本内容，使用普通文本
+            InlineContent.fromPlainText(content)
+        }
+    }
+    
     /**
      * 获取笔记预览（最多显示100个字符）
      */
@@ -73,6 +114,7 @@ data class HabitNote(
             "habitId" to habitId,
             "title" to title,
             "content" to content,
+            "richContent" to richContent,
             "mood" to mood.name,
             "tags" to tags.map { it.name },
             "images" to images.map { it.uri },
@@ -111,6 +153,7 @@ data class HabitNote(
                 habitId = data["habitId"] as? String ?: "",
                 title = data["title"] as? String ?: "",
                 content = data["content"] as? String ?: "",
+                richContent = data["richContent"] as? String ?: "",
                 mood = mood,
                 tags = tags,
                 images = images,

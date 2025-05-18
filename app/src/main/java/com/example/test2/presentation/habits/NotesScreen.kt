@@ -64,13 +64,14 @@ import com.example.test2.data.model.NoteImage
 import com.example.test2.presentation.habits.components.HabitSelector
 import com.example.test2.presentation.habits.components.ImageViewer
 import com.example.test2.presentation.habits.components.NoteCard
-import com.example.test2.presentation.habits.components.NoteDetail
+import com.example.test2.presentation.habits.components.RichNoteDetail
 import com.example.test2.presentation.habits.components.NoteEditor
 import com.example.test2.presentation.habits.components.NoteFilterModal
 import com.example.test2.presentation.habits.components.NoteItem
 import com.example.test2.presentation.habits.components.NoteSearchBar
 import com.example.test2.presentation.habits.components.SearchTextField
 import com.example.test2.presentation.components.LoadingView
+import com.example.test2.presentation.components.IndexingNotice
 import com.example.test2.presentation.habits.components.ImageViewer
 
 /**
@@ -173,6 +174,15 @@ fun NotesScreen(
                 )
             }
             
+            // 显示索引创建通知
+            if (state.isIndexing) {
+                IndexingNotice(
+                    isVisible = true,
+                    onDismiss = { viewModel.onEvent(NotesEvent.ClearIndexingState) },
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
+            
             // 错误显示 - 如果有错误
             state.error?.let { errorMessage ->
                 Box(
@@ -199,7 +209,7 @@ fun NotesScreen(
     // 笔记详情对话框
     if (state.showNoteDetail && state.selectedNote != null) {
         Dialog(onDismissRequest = { viewModel.onEvent(NotesEvent.CloseNoteDetail) }) {
-            NoteDetail(
+            RichNoteDetail(
                 note = state.selectedNote!!,
                 onEdit = { note ->
                     viewModel.onEvent(NotesEvent.ShowEditNoteEditor(note))

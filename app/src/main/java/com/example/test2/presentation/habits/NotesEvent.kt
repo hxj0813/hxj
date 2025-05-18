@@ -13,7 +13,7 @@ sealed class NotesEvent {
     /**
      * 加载笔记列表
      */
-    object LoadNotes : NotesEvent()
+    data object LoadNotes : NotesEvent()
     
     /**
      * 过滤笔记
@@ -63,12 +63,12 @@ sealed class NotesEvent {
     /**
      * 关闭笔记详情
      */
-    object CloseNoteDetail : NotesEvent()
+    data object CloseNoteDetail : NotesEvent()
     
     /**
      * 显示笔记编辑器（新建笔记）
      */
-    object ShowNoteEditor : NotesEvent()
+    data object ShowNoteEditor : NotesEvent()
     
     /**
      * 显示笔记编辑器（编辑现有笔记）
@@ -78,7 +78,7 @@ sealed class NotesEvent {
     /**
      * 关闭笔记编辑器
      */
-    object CloseNoteEditor : NotesEvent()
+    data object CloseNoteEditor : NotesEvent()
     
     /**
      * 添加图片到笔记
@@ -98,5 +98,10 @@ sealed class NotesEvent {
     /**
      * 关闭图片查看器
      */
-    object CloseImageViewer : NotesEvent()
+    data object CloseImageViewer : NotesEvent()
+    
+    /**
+     * 清除索引创建状态
+     */
+    data object ClearIndexingState : NotesEvent()
 } 

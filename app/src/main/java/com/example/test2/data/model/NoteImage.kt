@@ -39,22 +39,26 @@ data class NoteImage(
         return try {
             Log.d("NoteImage", "尝试解析URI: $uri")
             
-            when {
+            val result = when {
                 uri.startsWith("file://") -> {
                     // 已经是标准file://格式
+                    Log.d("NoteImage", "URI是标准file://格式")
                     Uri.parse(uri)
                 }
                 uri.startsWith("/") -> {
                     // 仅绝对路径，转为file://格式
+                    Log.d("NoteImage", "URI是绝对路径，转为file://格式")
                     Uri.parse("file://$uri")
                 }
                 uri.startsWith("content://") -> {
                     // content://格式
+                    Log.d("NoteImage", "URI是content://格式")
                     Uri.parse(uri)
                 }
                 else -> {
                     // 其他格式，尝试直接解析
                     try {
+                        Log.d("NoteImage", "尝试直接解析URI")
                         Uri.parse(uri)
                     } catch (e: Exception) {
                         Log.e("NoteImage", "直接解析失败，尝试作为文件路径处理", e)
@@ -63,18 +67,41 @@ data class NoteImage(
                         Uri.fromFile(file)
                     }
                 }
-            }.also { result ->
-                Log.d("NoteImage", "解析结果: $result")
-                
-                // 如果是文件URI，验证文件是否存在
-                if (result.scheme == "file") {
-                    val path = result.path
-                    if (path != null) {
-                        val file = java.io.File(path)
-                        Log.d("NoteImage", "文件存在: ${file.exists()}, 路径: ${file.absolutePath}")
+            }
+            
+            Log.d("NoteImage", "解析结果: $result")
+            
+            // 如果是文件URI，验证文件是否存在
+            if (result.scheme == "file") {
+                val path = result.path
+                if (path != null) {
+                    val file = java.io.File(path)
+                    val exists = file.exists()
+                    Log.d("NoteImage", "文件存在: $exists, 路径: ${file.absolutePath}")
+                    
+                    // 如果文件不存在，尝试使用不同的解析方式
+                    if (!exists) {
+                        Log.w("NoteImage", "文件不存在，尝试备用解析方法")
+                        
+                        // 尝试从原始URI直接构建文件
+                        val originalFile = java.io.File(uri)
+                        if (originalFile.exists()) {
+                            Log.d("NoteImage", "找到文件：${originalFile.absolutePath}")
+                            return Uri.fromFile(originalFile)
+                        }
+                        
+                        // 尝试移除可能的前缀
+                        val cleanPath = uri.replace("file://", "")
+                        val cleanFile = java.io.File(cleanPath)
+                        if (cleanFile.exists()) {
+                            Log.d("NoteImage", "清理路径后找到文件：${cleanFile.absolutePath}")
+                            return Uri.fromFile(cleanFile)
+                        }
                     }
                 }
             }
+            
+            result
         } catch (e: Exception) {
             Log.e("NoteImage", "无法解析URI: $uri", e)
             null

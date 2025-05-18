@@ -1,0 +1,110 @@
+// 数据迁移辅助工具
+
+/**
+ * 下面是一个将本地笔记数据迁移到Firebase的实用函数。
+ * 您可以在合适的位置(例如设置界面)添加一个按钮来触发此功能。
+ */
+
+// 将此函数添加到您的ViewModel中:
+
+/**
+ * 迁移本地笔记到Firebase
+ */
+fun migrateLocalNotesToFirebase() {
+    viewModelScope.launch {
+        _state.update { it.copy(isLoading = true, error = null) }
+        
+        try {
+            // 获取用户标识，确保用户已登录
+            val userId = Firebase.auth.currentUser?.uid
+            if (userId == null) {
+                _state.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = "请先登录后再进行迁移"
+                    ) 
+                }
+                return@launch
+            }
+            
+            // 1. 获取所有本地笔记
+            val localNotes = getAllLocalNotes() // 实现此函数获取本地数据库中的所有笔记
+            
+            // 2. 对每个笔记执行迁移
+            var successCount = 0
+            var failureCount = 0
+            
+            localNotes.forEach { note ->
+                // 处理图片
+                val updatedImages = mutableListOf<NoteImage>()
+                
+                // 处理每个图片
+                for (image in note.images) {
+                    try {
+                        // 将本地URI转换为文件
+                        val localUri = Uri.parse(image.uri)
+                        val file = File(image.getFilePath() ?: "")
+                        
+                        if (file.exists()) {
+                            // 上传到Firebase
+                            noteUseCases.uploadNoteImage(localUri, context)
+                                .onSuccess { firebaseImage ->
+                                    updatedImages.add(firebaseImage)
+                                }
+                                .onFailure {
+                                    // 如果上传失败，记录原始图片
+                                    updatedImages.add(image)
+                                }
+                        } else {
+                            // 文件不存在，保留原始图片信息
+                            updatedImages.add(image)
+                        }
+                    } catch (e: Exception) {
+                        // 处理失败，保留原始图片
+                        updatedImages.add(image)
+                    }
+                }
+                
+                // 创建更新后的笔记
+                val updatedNote = note.copy(
+                    images = updatedImages
+                )
+                
+                // 保存到Firebase
+                noteUseCases.saveNote(updatedNote)
+                    .onSuccess { successCount++ }
+                    .onFailure { failureCount++ }
+            }
+            
+            _state.update { 
+                it.copy(
+                    isLoading = false,
+                    error = if (localNotes.isEmpty()) {
+                        "没有找到需要迁移的笔记"
+                    } else if (failureCount > 0) {
+                        "迁移完成，${successCount}条成功，${failureCount}条失败"
+                    } else {
+                        "成功迁移${successCount}条笔记到云端"
+                    }
+                ) 
+            }
+        } catch (e: Exception) {
+            _state.update { 
+                it.copy(
+                    isLoading = false,
+                    error = "迁移失败: ${e.message}"
+                ) 
+            }
+        }
+    }
+}
+
+/**
+ * 辅助函数：从本地数据库获取所有笔记
+ * 请根据您的本地数据库实现修改此函数
+ */
+private suspend fun getAllLocalNotes(): List<HabitNote> {
+    // 实现从本地数据库查询所有笔记的逻辑
+    // 例如：return localNoteRepository.getAllNotes()
+    return emptyList() // 替换为实际实现
+} 

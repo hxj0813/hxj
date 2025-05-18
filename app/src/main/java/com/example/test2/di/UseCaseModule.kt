@@ -1,5 +1,6 @@
 package com.example.test2.di
 
+import com.example.test2.data.firebase.repository.FirebaseHabitNoteRepository
 import com.example.test2.data.repository.GoalRepository
 import com.example.test2.data.repository.NoteRepository
 import com.example.test2.domain.usecase.GoalUseCases
@@ -29,10 +30,11 @@ object UseCaseModule {
     
     /**
      * 提供NoteUseCases实例
+     * 使用Firebase实现
      */
     @Provides
     @Singleton
-    fun provideNoteUseCases(repository: NoteRepository): NoteUseCases {
+    fun provideNoteUseCases(repository: FirebaseHabitNoteRepository): NoteUseCases {
         return NoteUseCases(repository)
     }
     

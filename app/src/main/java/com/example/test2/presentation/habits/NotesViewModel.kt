@@ -1,5 +1,6 @@
 package com.example.test2.presentation.habits
 
+import android.app.Application
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -8,8 +9,11 @@ import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteImage
+import com.example.test2.data.model.InlineContent
 import com.example.test2.domain.usecase.NoteUseCases
 import com.example.test2.util.NoteImageManager
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +34,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NotesViewModel @Inject constructor(
     private val noteUseCases: NoteUseCases,
-    private val imageManager: NoteImageManager
+    private val imageManager: NoteImageManager,
+    private val context: Application
 ) : ViewModel() {
 
     // 状态
@@ -69,6 +74,7 @@ class NotesViewModel @Inject constructor(
             is NotesEvent.RemoveImageFromNote -> removeImageFromNote(event.image)
             is NotesEvent.ViewImage -> viewImage(event.image)
             is NotesEvent.CloseImageViewer -> closeImageViewer()
+            is NotesEvent.ClearIndexingState -> clearIndexingState()
         }
     }
 
@@ -81,24 +87,26 @@ class NotesViewModel @Inject constructor(
     }
     
     /**
-     * 加载顶置笔记
+     * 过滤错误消息，隐藏Firebase索引错误
      */
-    private fun loadPinnedNotes() {
-        viewModelScope.launch {
-            noteUseCases.getPinnedNotes()
-                .catch { e ->
-                    // 处理错误
-                    _state.update { it.copy(error = e.message) }
-                }
-                .onEach { notes ->
-                    pinnedNotes = notes
-                    // 如果当前过滤器是顶置笔记，需要更新UI
-                    if (_state.value.currentFilter == NotesState.Filter.PINNED) {
-                        applyCurrentFilter()
-                    }
-                }
-                .launchIn(viewModelScope)
+    private fun filterFirebaseError(error: Throwable?): String? {
+        if (error == null) return null
+        
+        val errorMessage = error.message ?: return "未知错误"
+        
+        // 检测是否为索引错误
+        if (errorMessage.contains("FAILED_PRECONDITION") && 
+            errorMessage.contains("requires an index")) {
+            // 记录错误但不显示给用户
+            Log.w("NotesViewModel", "Firebase索引正在创建: $errorMessage")
+            
+            // 设置索引创建中的状态
+            _state.update { it.copy(isIndexing = true) }
+            
+            return null
         }
+        
+        return errorMessage
     }
 
     /**
@@ -111,10 +119,11 @@ class NotesViewModel @Inject constructor(
             // 从数据库加载所有笔记
             noteUseCases.getAllNotes()
                 .catch { e ->
+                    val filteredError = filterFirebaseError(e)
                     _state.update { 
                         it.copy(
                             isLoading = false,
-                            error = e.message
+                            error = filteredError
                         ) 
                     }
                 }
@@ -141,6 +150,30 @@ class NotesViewModel @Inject constructor(
                             filteredNotes = filtered,
                             isLoading = false
                         )
+                    }
+                }
+                .launchIn(viewModelScope)
+        }
+    }
+
+    /**
+     * 加载顶置笔记
+     */
+    private fun loadPinnedNotes() {
+        viewModelScope.launch {
+            noteUseCases.getPinnedNotes()
+                .catch { e ->
+                    // 过滤掉索引错误
+                    val filteredError = filterFirebaseError(e)
+                    if (filteredError != null) {
+                        _state.update { it.copy(error = filteredError) }
+                    }
+                }
+                .onEach { notes ->
+                    pinnedNotes = notes
+                    // 如果当前过滤器是顶置笔记，需要更新UI
+                    if (_state.value.currentFilter == NotesState.Filter.PINNED) {
+                        applyCurrentFilter()
                     }
                 }
                 .launchIn(viewModelScope)
@@ -208,11 +241,17 @@ class NotesViewModel @Inject constructor(
             
             noteUseCases.getNotesByMood(mood)
                 .catch { e ->
-                    _state.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = e.message
-                        ) 
+                    // 过滤掉索引错误
+                    val filteredError = filterFirebaseError(e)
+                    if (filteredError != null) {
+                        _state.update { 
+                            it.copy(
+                                isLoading = false,
+                                error = filteredError
+                            ) 
+                        }
+                    } else {
+                        _state.update { it.copy(isLoading = false) }
                     }
                 }
                 .onEach { notes ->
@@ -259,51 +298,18 @@ class NotesViewModel @Inject constructor(
             
             _state.update { it.copy(isLoading = true, searchQuery = query) }
             
-            // 先搜索标题
-            noteUseCases.searchNotesByTitle(query)
-                .catch { e ->
-                    _state.update { 
-                        it.copy(
-                            isLoading = false,
-                            error = e.message
-                        ) 
-                    }
-                }
-                .onEach { titleMatches ->
-                    // 再搜索内容
-                    noteUseCases.searchNotesByContent(query)
-                        .catch { e ->
-                            _state.update { 
-                                it.copy(
-                                    isLoading = false,
-                                    error = e.message
-                                ) 
-                            }
-                        }
-                        .onEach { contentMatches ->
-                            // 合并结果（去重）
-                            val combinedResults = (titleMatches + contentMatches)
-                                .distinctBy { it.id }
-                            
-                            // 如果有习惯ID筛选，继续过滤
-                            val filteredByHabit = _state.value.habitId?.let { habitId ->
-                                if (habitId.isNotEmpty()) {
-                                    combinedResults.filter { it.habitId == habitId }
-                                } else {
-                                    combinedResults
-                                }
-                            } ?: combinedResults
-                            
-                            _state.update { 
-                                it.copy(
-                                    filteredNotes = filteredByHabit,
-                                    isLoading = false
-                                )
-                            }
-                        }
-                        .launchIn(viewModelScope)
-                }
-                .launchIn(viewModelScope)
+            // 使用本地过滤进行搜索
+            val filteredNotes = _state.value.notes.filter { note ->
+                note.title.contains(query, ignoreCase = true) ||
+                note.content.contains(query, ignoreCase = true)
+            }
+            
+            _state.update { 
+                it.copy(
+                    filteredNotes = filteredNotes,
+                    isLoading = false
+                )
+            }
         }
     }
 
@@ -318,45 +324,71 @@ class NotesViewModel @Inject constructor(
             try {
                 Log.d("NotesViewModel", "开始添加图片: $uri")
                 
-                // 保存图片到本地文件系统
-                val savedUri = imageManager.saveImageFromUri(uri)
-                Log.d("NotesViewModel", "图片已保存到: $savedUri")
-                
-                // 创建图片对象
-                val newImage = NoteImage(
-                    id = UUID.randomUUID().toString(),
-                    uri = savedUri,
-                    description = "",
-                    createdAt = Date()
-                )
-                
-                // 更新当前编辑中的笔记
-                val currentNote = _state.value.editingNote
-                if (currentNote != null) {
-                    // 确保不超过10张图片
-                    if (currentNote.images.size < 10) {
-                        val updatedImages = currentNote.images + newImage
-                        val updatedNote = currentNote.copy(images = updatedImages)
+                // 使用Firebase上传图片
+                noteUseCases.uploadNoteImage(uri, context)
+                    .onSuccess { noteImage ->
+                        Log.d("NotesViewModel", "图片已上传到Firebase: ${noteImage.uri}")
                         
-                        Log.d("NotesViewModel", "添加图片后，笔记 ${updatedNote.id} 现在有 ${updatedImages.size} 张图片")
-                        
-                        _state.update { 
-                            it.copy(
-                                editingNote = updatedNote,
-                                isImageProcessing = false
-                            ) 
+                        // 更新当前编辑中的笔记
+                        val currentNote = _state.value.editingNote
+                        if (currentNote != null) {
+                            // 确保不超过10张图片
+                            if (currentNote.images.size < 10) {
+                                val updatedImages = currentNote.images + noteImage
+                                
+                                // 获取当前富文本内容状态
+                                val hasRichContent = currentNote.richContent.isNotEmpty()
+                                Log.d("NotesViewModel", "当前笔记${if (hasRichContent) "有" else "没有"}富文本内容")
+                                Log.d("NotesViewModel", "当前笔记图片数: ${currentNote.images.size}, 更新后: ${updatedImages.size}")
+                                
+                                val updatedNote = currentNote.copy(images = updatedImages)
+                                
+                                Log.d("NotesViewModel", "添加图片后，笔记 ${updatedNote.id} 现在有 ${updatedImages.size} 张图片")
+                                
+                                // 触发UI更新，将重新创建NoteEditor组件
+                                _state.update { 
+                                    it.copy(
+                                        editingNote = updatedNote,
+                                        isImageProcessing = false
+                                    ) 
+                                }
+                            } else {
+                                _state.update { 
+                                    it.copy(
+                                        error = "最多只能添加10张图片",
+                                        isImageProcessing = false
+                                    ) 
+                                }
+                            }
+                        } else {
+                            // 如果没有正在编辑的笔记，创建一个新的笔记
+                            val newNote = HabitNote(
+                                id = UUID.randomUUID().toString(),
+                                habitId = _state.value.habitId ?: "",
+                                title = "",
+                                content = "",
+                                images = listOf(noteImage),
+                                createdAt = Date(),
+                                updatedAt = Date()
+                            )
+                            
+                            _state.update { 
+                                it.copy(
+                                    editingNote = newNote,
+                                    isImageProcessing = false
+                                ) 
+                            }
                         }
-                    } else {
+                    }
+                    .onFailure { e ->
+                        Log.e("NotesViewModel", "上传图片失败: ${e.message}", e)
                         _state.update { 
                             it.copy(
-                                error = "最多只能添加10张图片",
+                                error = "上传图片失败: ${e.message}",
                                 isImageProcessing = false
                             ) 
                         }
                     }
-                } else {
-                    _state.update { it.copy(isImageProcessing = false) }
-                }
             } catch (e: Exception) {
                 Log.e("NotesViewModel", "添加图片失败: ${e.message}", e)
                 _state.update { 
@@ -368,7 +400,7 @@ class NotesViewModel @Inject constructor(
             }
         }
     }
-    
+
     /**
      * 从笔记中移除图片
      */
@@ -377,9 +409,21 @@ class NotesViewModel @Inject constructor(
             try {
                 Log.d("NotesViewModel", "准备移除图片 ID: ${image.id}")
                 
-                // 删除文件
-                imageManager.deleteImage(image.uri)
-                Log.d("NotesViewModel", "图片文件已删除: ${image.uri}")
+                // 如果图片URI是Firebase URL，删除云存储中的图片
+                if (image.uri.startsWith("https://")) {
+                    noteUseCases.deleteNoteImage(image.uri)
+                        .onSuccess {
+                            Log.d("NotesViewModel", "Firebase存储中的图片已删除: ${image.uri}")
+                        }
+                        .onFailure { e ->
+                            Log.e("NotesViewModel", "删除Firebase图片失败: ${e.message}", e)
+                            // 即使删除失败，仍然从UI中移除
+                        }
+                } else {
+                    // 删除本地文件
+                    imageManager.deleteImage(image.uri)
+                    Log.d("NotesViewModel", "本地图片文件已删除: ${image.uri}")
+                }
                 
                 // 更新状态
                 val currentNote = _state.value.editingNote
@@ -468,36 +512,44 @@ class NotesViewModel @Inject constructor(
             _state.update { it.copy(isSaving = true) }
             
             try {
-                Log.d("NotesViewModel", "Saving new note with title: ${note.title}")
-                Log.d("NotesViewModel", "Note has ${note.images.size} images")
+                Log.d("NotesViewModel", "保存笔记: ${note.title}")
+                Log.d("NotesViewModel", "笔记包含 ${note.images.size} 张图片")
                 
-                val result = noteUseCases.saveNote(note)
-                Log.d("NotesViewModel", "Save result: $result")
-                
-                if (result > 0) {
-                    _state.update { 
-                        it.copy(
-                            showNoteEditor = false,
-                            editingNote = null,
-                            isSaving = false
-                        ) 
-                    }
-                    
-                    // 重新加载笔记列表
-                    loadNotes()
-                    
-                    // 清理未使用的图片
-                    cleanupUnusedImages()
-                } else {
-                    _state.update { 
-                        it.copy(
-                            error = "保存笔记失败",
-                            isSaving = false
-                        ) 
-                    }
+                // 检查是否有富文本内容
+                if (note.richContent.isNotEmpty()) {
+                    Log.d("NotesViewModel", "笔记包含富文本内容: ${note.richContent.length} 字符")
+                    // 验证内联内容
+                    val inlineContents = note.getInlineContentList()
+                    Log.d("NotesViewModel", "解析出 ${inlineContents.size} 个内联内容项")
                 }
+                
+                // 使用Firebase保存笔记
+                noteUseCases.saveNote(note)
+                    .onSuccess { noteId ->
+                        Log.d("NotesViewModel", "笔记保存成功，ID: $noteId")
+                        
+                        // 更新笔记列表并关闭编辑器
+                        loadNotes()
+                        _state.update { 
+                            it.copy(
+                                showNoteEditor = false,
+                                editingNote = null,
+                                isSaving = false,
+                                error = null
+                            ) 
+                        }
+                    }
+                    .onFailure { e ->
+                        Log.e("NotesViewModel", "保存笔记失败: ${e.message}", e)
+                        _state.update { 
+                            it.copy(
+                                error = "保存笔记失败: ${e.message}",
+                                isSaving = false
+                            ) 
+                        }
+                    }
             } catch (e: Exception) {
-                Log.e("NotesViewModel", "Error saving note: ${e.message}", e)
+                Log.e("NotesViewModel", "保存笔记过程中出错: ${e.message}", e)
                 _state.update { 
                     it.copy(
                         error = "保存笔记失败: ${e.message}",
@@ -522,6 +574,14 @@ class NotesViewModel @Inject constructor(
                 Log.d("NotesViewModel", "内容: ${note.content.take(50)}...")
                 Log.d("NotesViewModel", "图片数量: ${note.images.size}")
                 
+                // 检查是否有富文本内容
+                if (note.richContent.isNotEmpty()) {
+                    Log.d("NotesViewModel", "笔记包含富文本内容: ${note.richContent.length} 字符")
+                    // 解析内联内容
+                    val inlineContents = note.getInlineContentList()
+                    Log.d("NotesViewModel", "解析出 ${inlineContents.size} 个内联内容项")
+                }
+                
                 // 获取当前编辑中的笔记
                 val currentEditingNote = _state.value.editingNote
                 
@@ -540,37 +600,36 @@ class NotesViewModel @Inject constructor(
                 
                 Log.d("NotesViewModel", "最终更新的笔记图片数量: ${updatedNote.images.size}")
                 
-                // 调用Repository更新笔记
-                val result = noteUseCases.updateNote(updatedNote)
-                Log.d("NotesViewModel", "更新结果: $result")
-                
-                if (result) {
-                    _state.update { 
-                        it.copy(
-                            showNoteEditor = false,
-                            editingNote = null,
-                            isSaving = false
-                        ) 
+                // 使用Firebase更新笔记（实际上是保存笔记）
+                noteUseCases.saveNote(updatedNote)
+                    .onSuccess { noteId ->
+                        Log.d("NotesViewModel", "笔记更新成功，ID: $noteId")
+                        
+                        _state.update { 
+                            it.copy(
+                                showNoteEditor = false,
+                                editingNote = null,
+                                isSaving = false
+                            ) 
+                        }
+                        
+                        // 如果正在查看此笔记的详情，更新显示
+                        if (_state.value.showNoteDetail && _state.value.selectedNote?.id == note.id) {
+                            _state.update { it.copy(selectedNote = updatedNote) }
+                        }
+                        
+                        // 重新加载笔记列表
+                        loadNotes()
                     }
-                    
-                    // 如果正在查看此笔记的详情，更新显示
-                    if (_state.value.showNoteDetail && _state.value.selectedNote?.id == note.id) {
-                        _state.update { it.copy(selectedNote = updatedNote) }
+                    .onFailure { e ->
+                        Log.e("NotesViewModel", "更新笔记失败: ${e.message}", e)
+                        _state.update { 
+                            it.copy(
+                                error = "更新笔记失败: ${e.message}",
+                                isSaving = false
+                            ) 
+                        }
                     }
-                    
-                    // 重新加载笔记列表
-                    loadNotes()
-                    
-                    // 清理未使用的图片
-                    cleanupUnusedImages()
-                } else {
-                    _state.update { 
-                        it.copy(
-                            error = "笔记更新失败",
-                            isSaving = false
-                        ) 
-                    }
-                }
             } catch (e: Exception) {
                 Log.e("NotesViewModel", "更新笔记失败: ${e.message}", e)
                 _state.update { 
@@ -589,23 +648,31 @@ class NotesViewModel @Inject constructor(
     private fun deleteNote(noteId: String) {
         viewModelScope.launch {
             try {
-                // 获取笔记信息
+                // 获取笔记信息（用于记录）
                 val noteToDelete = _state.value.notes.find { it.id == noteId }
+                if (noteToDelete != null) {
+                    Log.d("NotesViewModel", "准备删除笔记 ID: $noteId, 标题: ${noteToDelete.title}")
+                }
                 
                 // 删除笔记
                 noteUseCases.deleteNote(noteId)
-                
-                // 关闭详情视图
-                if (_state.value.showNoteDetail && _state.value.selectedNote?.id == noteId) {
-                    _state.update { it.copy(showNoteDetail = false, selectedNote = null) }
-                }
-                
-                // 重新加载笔记列表
-                loadNotes()
-                
-                // 清理未使用的图片
-                cleanupUnusedImages()
+                    .onSuccess {
+                        Log.d("NotesViewModel", "笔记删除成功")
+                        
+                        // 关闭详情视图
+                        if (_state.value.showNoteDetail && _state.value.selectedNote?.id == noteId) {
+                            _state.update { it.copy(showNoteDetail = false, selectedNote = null) }
+                        }
+                        
+                        // 重新加载笔记列表
+                        loadNotes()
+                    }
+                    .onFailure { e ->
+                        Log.e("NotesViewModel", "删除笔记失败: ${e.message}", e)
+                        _state.update { it.copy(error = "删除笔记失败: ${e.message}") }
+                    }
             } catch (e: Exception) {
+                Log.e("NotesViewModel", "删除笔记过程中出错: ${e.message}", e)
                 _state.update { it.copy(error = "删除笔记失败: ${e.message}") }
             }
         }
@@ -761,15 +828,23 @@ class NotesViewModel @Inject constructor(
      */
     private fun toggleNotePinStatus(noteId: String, isPinned: Boolean) {
         viewModelScope.launch {
-            val success = noteUseCases.toggleNotePinStatus(noteId, isPinned)
-            if (success) {
-                loadNotes()
-                // 同时更新顶置笔记缓存
-                loadPinnedNotes()
-            } else {
-                _state.update { it.copy(error = "修改笔记顶置状态失败") }
-            }
+            noteUseCases.updateNotePinStatus(noteId, isPinned)
+                .onSuccess {
+                    loadNotes()
+                    // 同时更新顶置笔记缓存
+                    loadPinnedNotes()
+                }
+                .onFailure { e ->
+                    _state.update { it.copy(error = "修改笔记顶置状态失败: ${e.message}") }
+                }
         }
+    }
+
+    /**
+     * 清除索引创建状态
+     */
+    private fun clearIndexingState() {
+        _state.update { it.copy(isIndexing = false) }
     }
 
     override fun onCleared() {

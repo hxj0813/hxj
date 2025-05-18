@@ -1,0 +1,16 @@
+// Firebase Storage 安全规则
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 默认拒绝所有请求
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // 用户图片规则
+    match /users/{userId}/{allImages=**} {
+      // 允许用户读取和写入自己的图片
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+} 

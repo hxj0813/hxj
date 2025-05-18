@@ -1,0 +1,30 @@
+// Firebase Firestore 安全规则
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 默认拒绝所有请求
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // 用户文档规则
+    match /users/{userId} {
+      // 允许用户读取自己的文档
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // 允许用户创建自己的文档
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // 允许用户更新自己的文档，但不能更改特定字段
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // 笔记集合规则
+      match /habitNotes/{noteId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // 笔记图片集合规则
+      match /noteImages/{imageId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+} 

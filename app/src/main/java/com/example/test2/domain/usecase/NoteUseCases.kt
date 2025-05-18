@@ -1,125 +1,88 @@
 package com.example.test2.domain.usecase
 
+import android.content.Context
+import android.net.Uri
+import com.example.test2.data.firebase.repository.FirebaseHabitNoteRepository
 import com.example.test2.data.model.HabitNote
+import com.example.test2.data.model.NoteImage
 import com.example.test2.data.model.NoteMood
-import com.example.test2.data.repository.NoteRepository
 import kotlinx.coroutines.flow.Flow
-import java.util.Calendar
-import java.util.Date
 import javax.inject.Inject
 
 /**
- * 笔记相关的用例集合
- * 封装所有与笔记相关的业务逻辑
+ * 笔记用例集合
+ * 连接UI层和数据层的桥梁
  */
 class NoteUseCases @Inject constructor(
-    private val repository: NoteRepository
+    private val noteRepository: FirebaseHabitNoteRepository
 ) {
     /**
      * 获取所有笔记
      */
     fun getAllNotes(): Flow<List<HabitNote>> {
-        return repository.getAllNotes()
+        return noteRepository.getAllNotes()
     }
     
     /**
-     * 获取顶置的笔记
+     * 获取特定习惯的笔记
      */
-    fun getPinnedNotes(): Flow<List<HabitNote>> {
-        return repository.getPinnedNotes()
+    fun getNotesByHabit(habitId: String): Flow<List<HabitNote>> {
+        return noteRepository.getNotesByHabit(habitId)
     }
     
     /**
-     * 获取今天的笔记
-     */
-    fun getTodayNotes(): Flow<List<HabitNote>> {
-        return repository.getTodayNotes()
-    }
-    
-    /**
-     * 获取过去一周的笔记
-     */
-    fun getLastWeekNotes(): Flow<List<HabitNote>> {
-        val calendar = Calendar.getInstance()
-        calendar.add(Calendar.DAY_OF_YEAR, -7)
-        val weekAgo = calendar.time
-        
-        return repository.getLastWeekNotes(weekAgo)
-    }
-    
-    /**
-     * 获取特定心情的笔记
+     * 按心情获取笔记
      */
     fun getNotesByMood(mood: NoteMood): Flow<List<HabitNote>> {
-        return repository.getNotesByMood(mood)
+        return noteRepository.getNotesByMood(mood)
     }
     
     /**
-     * 根据标题搜索笔记
+     * 获取顶置笔记
      */
-    fun searchNotesByTitle(query: String): Flow<List<HabitNote>> {
-        return repository.searchNotesByTitle(query)
+    fun getPinnedNotes(): Flow<List<HabitNote>> {
+        return noteRepository.getPinnedNotes()
     }
     
     /**
-     * 根据内容搜索笔记
+     * 获取具体笔记内容
      */
-    fun searchNotesByContent(query: String): Flow<List<HabitNote>> {
-        return repository.searchNotesByContent(query)
-    }
-    
-    /**
-     * 根据ID获取笔记
-     */
-    suspend fun getNoteById(noteId: String): HabitNote? {
-        return repository.getNoteById(noteId)
+    fun getNoteById(id: String): Flow<HabitNote?> {
+        return noteRepository.getNoteById(id)
     }
     
     /**
      * 保存笔记
-     * @return 保存的笔记ID，如果保存失败返回-1
      */
-    suspend fun saveNote(note: HabitNote): Long {
-        return repository.saveNote(note)
-    }
-    
-    /**
-     * 更新笔记
-     * @return 是否更新成功
-     */
-    suspend fun updateNote(note: HabitNote): Boolean {
-        return repository.updateNote(note)
-    }
-    
-    /**
-     * 更新笔记心情
-     * @return 是否更新成功
-     */
-    suspend fun updateNoteMood(noteId: String, mood: NoteMood): Boolean {
-        return repository.updateNoteMood(noteId, mood)
-    }
-    
-    /**
-     * 切换笔记顶置状态
-     * @return 是否更新成功
-     */
-    suspend fun toggleNotePinStatus(noteId: String, isPinned: Boolean): Boolean {
-        return repository.updateNotePinStatus(noteId, isPinned)
+    suspend fun saveNote(note: HabitNote): Result<String> {
+        return noteRepository.saveNote(note)
     }
     
     /**
      * 删除笔记
-     * @return 是否删除成功
      */
-    suspend fun deleteNote(noteId: String): Boolean {
-        return repository.deleteNoteById(noteId)
+    suspend fun deleteNote(noteId: String): Result<Unit> {
+        return noteRepository.deleteNote(noteId)
     }
     
     /**
-     * 清理旧笔记（指定日期之前的）
-     * @return 删除的行数
+     * 更新笔记的顶置状态
      */
-    suspend fun cleanOldNotes(date: Date): Int {
-        return repository.deleteNotesBeforeDate(date)
+    suspend fun updateNotePinStatus(noteId: String, isPinned: Boolean): Result<Unit> {
+        return noteRepository.updateNotePinStatus(noteId, isPinned)
+    }
+    
+    /**
+     * 上传笔记图片
+     */
+    suspend fun uploadNoteImage(uri: Uri, context: Context): Result<NoteImage> {
+        return noteRepository.uploadNoteImage(uri, context)
+    }
+    
+    /**
+     * 删除笔记图片
+     */
+    suspend fun deleteNoteImage(imageUrl: String): Result<Unit> {
+        return noteRepository.deleteNoteImage(imageUrl)
     }
 } 
