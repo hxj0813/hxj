@@ -35,27 +35,20 @@ sealed class AppDestination(val route: String) {
  * @param modifier Modifier修饰符
  * @param navController 导航控制器
  * @param authViewModel 认证视图模型
- * @param startDestination 起始目的地
+ * @param startDestination 起始目的地（现在默认为主应用，允许不登录直接使用）
  */
 @Composable
 fun AppNavigationGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     authViewModel: AuthViewModel = hiltViewModel(),
-    startDestination: String = AppDestination.Auth.route
+    startDestination: String = AppDestination.Main.route // 默认进入主应用，不要求登录
 ) {
     val authState by authViewModel.authState.collectAsState()
     
-    // 根据登录状态决定起始路由
-    val currentStartDestination = if (authState.user != null) {
-        AppDestination.Main.route
-    } else {
-        startDestination
-    }
-    
     NavHost(
         navController = navController,
-        startDestination = currentStartDestination,
+        startDestination = startDestination,
         modifier = modifier
     ) {
         // 嵌套认证导航图
@@ -72,11 +65,13 @@ fun AppNavigationGraph(
         // 主应用
         composable(AppDestination.Main.route) {
             SelfManagementApp(
+                onLoginRequest = {
+                    // 当用户希望登录时导航到认证界面
+                    navController.navigate(AppDestination.Auth.route)
+                },
                 onLogout = {
                     authViewModel.logout()
-                    navController.navigate(AppDestination.Auth.route) {
-                        popUpTo(AppDestination.Main.route) { inclusive = true }
-                    }
+                    // 退出登录后仍然留在主应用，而不是回到登录界面
                 }
             )
         }

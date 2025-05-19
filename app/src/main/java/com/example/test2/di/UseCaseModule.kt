@@ -3,6 +3,7 @@ package com.example.test2.di
 import com.example.test2.data.firebase.repository.FirebaseHabitNoteRepository
 import com.example.test2.data.repository.GoalRepository
 import com.example.test2.data.repository.NoteRepository
+import com.example.test2.data.repository.HybridNoteRepository
 import com.example.test2.domain.usecase.GoalUseCases
 import com.example.test2.domain.usecase.NoteUseCases
 import dagger.Module
@@ -30,12 +31,12 @@ object UseCaseModule {
     
     /**
      * 提供NoteUseCases实例
-     * 使用Firebase实现
+     * 使用混合存储库实现，支持在线和离线模式
      */
     @Provides
     @Singleton
-    fun provideNoteUseCases(repository: FirebaseHabitNoteRepository): NoteUseCases {
-        return NoteUseCases(repository)
+    fun provideNoteUseCases(hybridRepository: HybridNoteRepository): NoteUseCases {
+        return NoteUseCases(hybridRepository)
     }
     
     // 随着应用扩展，可以在此添加更多UseCase的Provider方法

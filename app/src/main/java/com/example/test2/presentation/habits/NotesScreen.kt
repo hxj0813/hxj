@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -119,6 +122,27 @@ fun NotesScreen(
                     }
                 },
                 actions = {
+                    // 同步按钮
+                    if (state.isOnlineMode) {
+                        IconButton(
+                            onClick = { viewModel.onEvent(NotesEvent.SyncData) },
+                            enabled = !state.isSyncing
+                        ) {
+                            if (state.isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.padding(8.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = "同步数据"
+                                )
+                            }
+                        }
+                    }
+                    
                     IconButton(onClick = { /* 搜索功能 - 后续实现 */ }) {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -156,22 +180,89 @@ fun NotesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 加载状态
-            if (state.isLoading) {
-                LoadingView("正在加载笔记...")
-            } 
-            // 空状态
-            else if (state.showEmptyState) {
-                EmptyNotesView()
-            } 
-            // 笔记列表
-            else {
-                NotesList(
-                    notes = state.filteredNotes,
-                    onNoteClick = { note ->
-                        viewModel.onEvent(NotesEvent.ShowNoteDetail(note))
+            Column {
+                // 显示在线/离线状态指示器
+                AnimatedVisibility(visible = true) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (state.isOnlineMode) 
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (state.isOnlineMode) {
+                                Text(
+                                    text = "在线模式 - 数据将同步到云端",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            } else {
+                                Text(
+                                    text = "离线模式 - 数据仅保存在本地",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
-                )
+                }
+                
+                // 显示同步消息
+                if (state.syncMessage != null) {
+                    AnimatedVisibility(
+                        visible = state.syncMessage != null,
+                        enter = fadeIn() + slideInVertically(),
+                        exit = fadeOut() + slideOutVertically()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = state.syncMessage ?: "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                
+                // 加载状态
+                if (state.isLoading) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        LoadingView("正在加载笔记...")
+                    }
+                } 
+                // 空状态
+                else if (state.filteredNotes.isEmpty()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        EmptyNotesView()
+                    }
+                } 
+                // 笔记列表
+                else {
+                    Box(modifier = Modifier.weight(1f)) {
+                        NotesList(
+                            notes = state.filteredNotes,
+                            onNoteClick = { note ->
+                                viewModel.onEvent(NotesEvent.ShowNoteDetail(note))
+                            }
+                        )
+                    }
+                }
             }
             
             // 显示索引创建通知
@@ -199,7 +290,9 @@ fun NotesScreen(
                     Text(
                         text = errorMessage,
                         color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

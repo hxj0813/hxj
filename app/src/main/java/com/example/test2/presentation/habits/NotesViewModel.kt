@@ -10,7 +10,9 @@ import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteTag
 import com.example.test2.data.model.NoteImage
 import com.example.test2.data.model.InlineContent
+import com.example.test2.data.repository.HybridNoteRepository
 import com.example.test2.domain.usecase.NoteUseCases
+import com.example.test2.presentation.DataSyncViewModel
 import com.example.test2.util.NoteImageManager
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -35,6 +37,7 @@ import javax.inject.Inject
 class NotesViewModel @Inject constructor(
     private val noteUseCases: NoteUseCases,
     private val imageManager: NoteImageManager,
+    private val hybridRepository: HybridNoteRepository,
     private val context: Application
 ) : ViewModel() {
 
@@ -44,6 +47,10 @@ class NotesViewModel @Inject constructor(
     
     // 顶置笔记缓存
     private var pinnedNotes: List<HabitNote> = emptyList()
+    
+    // 是否处于在线模式
+    private val isOnlineMode: Boolean
+        get() = hybridRepository.isOnlineMode()
 
     init {
         loadNotes()
@@ -75,6 +82,8 @@ class NotesViewModel @Inject constructor(
             is NotesEvent.ViewImage -> viewImage(event.image)
             is NotesEvent.CloseImageViewer -> closeImageViewer()
             is NotesEvent.ClearIndexingState -> clearIndexingState()
+            // 新增同步相关事件
+            is NotesEvent.SyncData -> syncData()
         }
     }
 
@@ -90,6 +99,11 @@ class NotesViewModel @Inject constructor(
      * 过滤错误消息，隐藏Firebase索引错误
      */
     private fun filterFirebaseError(error: Throwable?): String? {
+        // 如果是离线模式，返回通用的离线错误
+        if (!isOnlineMode && error?.message?.contains("用户未登录") == true) {
+            return "离线模式下无法使用此功能，请先登录"
+        }
+        
         if (error == null) return null
         
         val errorMessage = error.message ?: return "未知错误"
@@ -148,7 +162,8 @@ class NotesViewModel @Inject constructor(
                         currentState.copy(
                             notes = filteredByHabit,
                             filteredNotes = filtered,
-                            isLoading = false
+                            isLoading = false,
+                            isOnlineMode = isOnlineMode
                         )
                     }
                 }
@@ -820,6 +835,41 @@ class NotesViewModel @Inject constructor(
                 // 按标签筛选在单独的方法中处理
                 notes
             }
+            NotesState.Filter.WEEK -> {
+                // 与LAST_WEEK相同的处理
+                val weekAgo = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -7)
+                }.time
+                notes.filter { it.createdAt.after(weekAgo) }
+            }
+            NotesState.Filter.TAG -> {
+                // 与BY_TAG相同的处理
+                notes
+            }
+            NotesState.Filter.MOOD_HAPPY_M -> {
+                // 与MOOD_HAPPY相同的处理
+                notes.filter { 
+                    it.mood == NoteMood.HAPPY || it.mood == NoteMood.VERY_HAPPY 
+                }
+            }
+            NotesState.Filter.MOOD_SAD_M -> {
+                // 与MOOD_SAD相同的处理
+                notes.filter { 
+                    it.mood == NoteMood.SAD || it.mood == NoteMood.VERY_SAD || it.mood == NoteMood.FRUSTRATED 
+                }
+            }
+            NotesState.Filter.MOOD_NEUTRAL_M -> {
+                // 与MOOD_NEUTRAL相同的处理
+                notes.filter { it.mood == NoteMood.NEUTRAL }
+            }
+            NotesState.Filter.MOOD_TIRED_M -> {
+                // 与MOOD_TIRED相同的处理
+                notes.filter { it.mood == NoteMood.TIRED }
+            }
+            NotesState.Filter.SEARCH -> {
+                // 搜索过滤已在外部处理
+                notes
+            }
         }
     }
 
@@ -845,6 +895,61 @@ class NotesViewModel @Inject constructor(
      */
     private fun clearIndexingState() {
         _state.update { it.copy(isIndexing = false) }
+    }
+
+    /**
+     * 手动触发数据同步
+     */
+    private fun syncData() {
+        if (!isOnlineMode) {
+            _state.update { 
+                it.copy(error = "离线模式下无法同步数据，请先登录") 
+            }
+            return
+        }
+        
+        viewModelScope.launch {
+            _state.update { it.copy(isSyncing = true) }
+            
+            try {
+                // 先从云端同步到本地
+                val cloudToLocalResult = hybridRepository.syncCloudToLocal()
+                
+                if (cloudToLocalResult.isSuccess) {
+                    val cloudCount = cloudToLocalResult.getOrDefault(0)
+                    
+                    // 再从本地同步到云端
+                    val localToCloudResult = hybridRepository.syncLocalToCloud()
+                    
+                    if (localToCloudResult.isSuccess) {
+                        val localCount = localToCloudResult.getOrDefault(0)
+                        
+                        _state.update { 
+                            it.copy(
+                                isSyncing = false,
+                                syncMessage = "同步成功：从云端同步 $cloudCount 条笔记，向云端同步 $localCount 条笔记",
+                                error = null
+                            ) 
+                        }
+                        
+                        // 重新加载笔记列表以显示最新数据
+                        loadNotes()
+                    } else {
+                        throw localToCloudResult.exceptionOrNull() ?: Exception("向云端同步失败")
+                    }
+                } else {
+                    throw cloudToLocalResult.exceptionOrNull() ?: Exception("从云端同步失败")
+                }
+            } catch (e: Exception) {
+                Log.e("NotesViewModel", "同步数据失败", e)
+                _state.update { 
+                    it.copy(
+                        isSyncing = false,
+                        error = "同步失败：${e.message}"
+                    ) 
+                }
+            }
+        }
     }
 
     override fun onCleared() {

@@ -104,4 +104,7 @@ sealed class NotesEvent {
      * 清除索引创建状态
      */
     data object ClearIndexingState : NotesEvent()
+    
+    // 数据同步事件
+    data object SyncData : NotesEvent()
 } 

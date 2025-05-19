@@ -3,8 +3,12 @@ package com.example.test2
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -12,14 +16,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.test2.data.model.Goal
 import com.example.test2.domain.usecase.GoalUseCases
+import com.example.test2.presentation.auth.AuthViewModel
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -120,35 +128,63 @@ class SelfManagementApp : Application() {
 
 /**
  * 主应用界面
- * @param onLogout 登出回调
+ * @param onLoginRequest 登录请求回调，当用户希望登录时调用
+ * @param onLogout 登出回调，当用户要登出时调用
  */
 @Composable
-fun SelfManagementApp(onLogout: () -> Unit) {
+fun SelfManagementApp(
+    onLoginRequest: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    authViewModel: AuthViewModel = hiltViewModel()
+) {
+    val authState by authViewModel.authState.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
     
-    // 这里保留原来的主应用内容，并添加登出按钮
-    // 仅作为示例，实际应用中应该将此按钮集成到应用工具栏或设置中
-    
-    // 添加登出按钮
-    IconButton(
-        onClick = { showMenu = true }
+    // 用户账户相关按钮
+    Row(
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Default.Logout,
-            contentDescription = "退出登录"
-        )
-        
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            modifier = Modifier.padding(8.dp)
-        ) {
-            DropdownMenuItem(
-                text = { Text("退出登录") },
-                onClick = {
-                    showMenu = false
-                    onLogout()
+        // 如果用户已登录，显示登出按钮
+        if (authState.user != null) {
+            IconButton(
+                onClick = { showMenu = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Logout,
+                    contentDescription = "退出登录"
+                )
+                
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("退出登录") },
+                        onClick = {
+                            showMenu = false
+                            onLogout()
+                        }
+                    )
                 }
+            }
+        } 
+        // 如果用户未登录，显示登录按钮
+        else {
+            IconButton(
+                onClick = onLoginRequest
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Login,
+                    contentDescription = "登录/注册"
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Text(
+                text = "未登录 (本地模式)",
+                modifier = Modifier.padding(end = 8.dp)
             )
         }
     }

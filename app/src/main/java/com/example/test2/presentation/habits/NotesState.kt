@@ -3,6 +3,7 @@ package com.example.test2.presentation.habits
 import com.example.test2.data.model.HabitNote
 import com.example.test2.data.model.NoteMood
 import com.example.test2.data.model.NoteImage
+import java.io.File
 
 /**
  * 笔记管理状态类
@@ -27,7 +28,10 @@ data class NotesState(
     val currentEditingNote: HabitNote? = null, // 当前正在编辑的笔记
     val tempImages: List<NoteImage> = emptyList(), // 临时图片列表
     val currentViewingImage: NoteImage? = null, // 当前正在查看的图片
-    val isImageViewerVisible: Boolean = false // 图片查看器是否可见
+    val isImageViewerVisible: Boolean = false, // 图片查看器是否可见
+    val isOnlineMode: Boolean = false,
+    val isSyncing: Boolean = false,
+    val syncMessage: String? = null
 ) {
     /**
      * 笔记过滤器
@@ -41,7 +45,14 @@ data class NotesState(
         MOOD_SAD,      // 难过的笔记
         MOOD_NEUTRAL,  // 平静的笔记
         MOOD_TIRED,    // 疲惫的笔记
-        BY_TAG         // 按标签筛选
+        BY_TAG,        // 按标签筛选
+        WEEK,          // 本周的笔记
+        TAG,           // 按标签筛选（搭配tagFilter使用）
+        MOOD_HAPPY_M,  // 开心的笔记（搭配moodFilter使用）
+        MOOD_SAD_M,    // 难过的笔记（搭配moodFilter使用）
+        MOOD_NEUTRAL_M, // 平静的笔记（搭配moodFilter使用）
+        MOOD_TIRED_M,   // 疲惫的笔记（搭配moodFilter使用）
+        SEARCH         // 搜索结果（搭配searchQuery使用）
     }
     
     /**

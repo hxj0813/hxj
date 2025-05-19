@@ -1,6 +1,7 @@
 package com.example.test2.di
 
 import android.content.Context
+import com.example.test2.data.firebase.repository.FirebaseHabitNoteRepository
 import com.example.test2.data.local.AppDatabase
 import com.example.test2.data.local.dao.BadgeDao
 import com.example.test2.data.local.dao.GoalDao
@@ -9,13 +10,16 @@ import com.example.test2.data.local.dao.UserBadgeDao
 import com.example.test2.data.repository.BadgeRepository
 import com.example.test2.data.repository.BadgeRepositoryImpl
 import com.example.test2.data.repository.GoalRepository
+import com.example.test2.data.repository.HybridNoteRepository
 import com.example.test2.data.repository.NoteRepository
 import com.example.test2.data.repository.TimeEntryRepository
 import com.example.test2.data.repository.TimeTrackingRepository
 import com.example.test2.data.repository.impl.GoalRepositoryImpl
+import com.example.test2.data.repository.impl.HybridNoteRepositoryImpl
 import com.example.test2.data.repository.impl.NoteRepositoryImpl
 import com.example.test2.data.repository.impl.TimeEntryRepositoryImpl
 import com.example.test2.util.NoteImageManager
+import com.google.firebase.auth.FirebaseAuth
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,8 +28,8 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * 仓库依赖注入模块
- * 使用Hilt提供仓库实例
+ * 仓库模块
+ * 提供各种仓库的依赖注入
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -48,11 +52,26 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideNoteRepository(
-        noteDao: NoteDao, 
+        noteDao: NoteDao,
         @ApplicationContext context: Context,
         imageManager: NoteImageManager
     ): NoteRepository {
         return NoteRepositoryImpl(noteDao, context, imageManager)
+    }
+    
+    /**
+     * 提供HybridNoteRepository实例
+     * 集成本地和云端存储
+     */
+    @Provides
+    @Singleton
+    fun provideHybridNoteRepository(
+        localRepository: NoteRepository,
+        firebaseRepository: FirebaseHabitNoteRepository,
+        auth: FirebaseAuth,
+        @ApplicationContext context: Context
+    ): HybridNoteRepository {
+        return HybridNoteRepositoryImpl(localRepository, firebaseRepository, auth, context)
     }
     
     /**
