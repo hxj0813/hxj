@@ -9,7 +9,11 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -48,6 +52,21 @@ fun Test2Theme(
 
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    // 同步状态栏颜色
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            // 将状态栏颜色设置为淡灰色而不是紫色
+            window.statusBarColor = android.graphics.Color.parseColor("#F5F5F5") // 淡灰色
+            // 深色主题下使用深灰色
+            if (darkTheme) {
+                window.statusBarColor = android.graphics.Color.parseColor("#303030") // 深灰色
+            }
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+        }
     }
 
     MaterialTheme(

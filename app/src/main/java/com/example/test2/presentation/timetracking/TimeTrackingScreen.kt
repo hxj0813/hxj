@@ -220,9 +220,6 @@ fun TimeTrackingScreen(
                             onClick = { 
                                 viewModel.onEvent(TimeTrackingEvent.SelectTimeEntry(timeEntry))
                             },
-                            onEdit = {
-                                viewModel.onEvent(TimeTrackingEvent.ShowEditEntryDialog(timeEntry))
-                            },
                             onDelete = {
                                 viewModel.onEvent(TimeTrackingEvent.DeleteTimeEntry(timeEntry.id))
                             },

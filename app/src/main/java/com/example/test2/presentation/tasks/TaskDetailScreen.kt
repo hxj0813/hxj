@@ -320,10 +320,19 @@ fun TaskDetailScreen(
                                     
                                     // 目标关联
                                     if (currentTask.goalId != null) {
+                                        // 使用remember保存目标信息状态
+                                        var goalInfo by remember { mutableStateOf<com.example.test2.data.model.Goal?>(null) }
+                                        
+                                        // 获取目标详情
+                                        LaunchedEffect(currentTask.goalId) {
+                                            goalInfo = viewModel.getGoalRepository().getGoalById(currentTask.goalId)
+                                        }
+                                        
+                                        // 显示目标信息
                                         InfoItem(
                                             icon = Icons.Default.Star,
                                             label = "关联目标",
-                                            value = "目标 ID: ${currentTask.goalId}",
+                                            value = goalInfo?.title ?: "目标 ID: ${currentTask.goalId}",
                                             color = Color(0xFF9C27B0)
                                         )
                                     }

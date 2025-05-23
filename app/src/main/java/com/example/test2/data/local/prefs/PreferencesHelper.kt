@@ -46,8 +46,43 @@ class PreferencesHelper @Inject constructor(
         editor.apply()
     }
     
+    /**
+     * 获取主题模式
+     * @return ThemeMode枚举值，默认为ThemeMode.LIGHT
+     */
+    fun getThemeMode(): ThemeMode {
+        val themeModeOrdinal = preferences.getInt(PREF_THEME_MODE, ThemeMode.LIGHT.ordinal)
+        return ThemeMode.values()[themeModeOrdinal]
+    }
+    
+    /**
+     * 设置主题模式
+     * @param themeMode 主题模式枚举值
+     */
+    fun setThemeMode(themeMode: ThemeMode) {
+        preferences.edit().putInt(PREF_THEME_MODE, themeMode.ordinal).apply()
+    }
+    
+    /**
+     * 是否使用暗色模式
+     * @param isSystemDarkTheme 系统当前是否为暗色模式（不再使用）
+     * @return 是否应该使用暗色模式
+     */
+    fun isDarkMode(isSystemDarkTheme: Boolean): Boolean {
+        return getThemeMode() == ThemeMode.DARK
+    }
+    
     companion object {
         private const val PREF_NAME = "app_preferences"
         private const val PREF_GOAL_LAST_UPDATE_PREFIX = "goal_last_update_"
+        private const val PREF_THEME_MODE = "theme_mode"
     }
+}
+
+/**
+ * 主题模式枚举
+ */
+enum class ThemeMode {
+    LIGHT,   // 浅色主题
+    DARK     // 暗色主题
 } 

@@ -323,6 +323,63 @@ fun GoalDialog(
                     }
                 }
                 
+                // 添加进度计算说明
+                if (hasLinkedTask) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFF5F5F5)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "进度计算说明",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4A90E2),
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            
+                            val daysUntilDeadline = kotlin.math.max(1, 
+                                (deadline.time - Date().time) / (24 * 60 * 60 * 1000)
+                            ).toInt()
+                            
+                            val progressEstimate = when {
+                                daysUntilDeadline <= 1 -> "15-20%"
+                                daysUntilDeadline <= 7 -> "8-12%"
+                                daysUntilDeadline <= 30 -> "4-6%"
+                                daysUntilDeadline <= 90 -> "2-3%"
+                                else -> "1-2%"
+                            }
+                            
+                            Text(
+                                text = "• 每次完成关联任务将增加目标进度",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                            Text(
+                                text = "• 目标时间跨度越长，每次任务完成增加的进度越小",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                            Text(
+                                text = "• 根据当前设置的截止日期(${daysUntilDeadline}天后)，预计每次任务完成将增加约${progressEstimate}的进度",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                            Text(
+                                text = "• 任务优先级也会影响进度增量：高优先级(×1.5)，中优先级(×1.0)，低优先级(×0.8)",
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // 按钮区

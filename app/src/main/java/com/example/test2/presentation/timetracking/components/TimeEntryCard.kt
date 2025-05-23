@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,7 +45,6 @@ import java.util.Locale
 fun TimeEntryCard(
     timeEntry: TimeEntry,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -172,33 +170,17 @@ fun TimeEntryCard(
             
             Spacer(modifier = Modifier.width(8.dp))
             
-            // 操作按钮
-            Column {
-                IconButton(
-                    onClick = onEdit,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "编辑",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+            // 操作按钮 - 只保留删除按钮
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "删除",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

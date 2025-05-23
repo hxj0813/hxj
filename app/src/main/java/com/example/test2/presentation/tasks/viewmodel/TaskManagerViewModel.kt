@@ -52,7 +52,8 @@ data class TaskListState(
     val todayTasksCount: Int = 0,
     val overdueTasksCount: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val successMessage: String? = null
 )
 
 /**
@@ -587,10 +588,22 @@ class TaskManagerViewModel @Inject constructor(
                 
                 println("DEBUG: 目标[$goalId]进度更新：$currentProgress -> $newProgress, 更新${if (updateSuccess) "成功" else "失败"}")
                 
+                // 更新反馈消息
+                val progressIncrease = (newProgress - currentProgress) * 100
+                val formattedProgress = String.format("%.1f", progressIncrease)
+                _taskListState.value = _taskListState.value.copy(
+                    successMessage = "已完成任务并更新目标「${goal.title}」进度，增加${formattedProgress}%"
+                )
+                
                 // 如果进度达到100%，标记目标为已完成
                 if (newProgress >= 1f) {
                     val completeSuccess = goalRepository.updateGoalCompletionStatus(goalId, true)
                     println("DEBUG: 目标[$goalId]进度达到100%，标记为完成${if (completeSuccess) "成功" else "失败"}")
+                    
+                    // 更新反馈消息为目标已完成
+                    _taskListState.value = _taskListState.value.copy(
+                        successMessage = "恭喜！目标「${goal.title}」已完成！"
+                    )
                 }
                 
                 // 记录更新日期
@@ -649,6 +662,40 @@ class TaskManagerViewModel @Inject constructor(
             }
             else -> {
                 // 普通任务保持基础增量
+            }
+        }
+        
+        // 获取关联的目标，根据目标的截止日期调整进度增量
+        task.goalId?.let { goalId ->
+            val goal = goalRepository.getGoalById(goalId)
+            if (goal != null && !goal.isCompleted) {
+                // 计算目标剩余的天数
+                val today = Date()
+                val remainingTimeMillis = goal.deadline.time - today.time
+                val totalTimeMillis = goal.deadline.time - goal.createdAt.time
+                
+                // 至少保留1天的时间跨度
+                val effectiveTotalDays = maxOf(1, totalTimeMillis / (24 * 60 * 60 * 1000))
+                
+                // 计算时间因子：时间越短，因子越大
+                val timeFactor = when {
+                    effectiveTotalDays <= 1 -> 4.0f  // 1天内的目标，进度增加很快
+                    effectiveTotalDays <= 7 -> 2.0f  // 一周内的目标
+                    effectiveTotalDays <= 30 -> 1.0f // 一个月内的目标
+                    effectiveTotalDays <= 90 -> 0.5f // 三个月内的目标
+                    else -> 0.25f                    // 长期目标
+                }
+                
+                println("DEBUG: 目标[$goalId] 总时间: ${effectiveTotalDays}天, 时间因子: $timeFactor")
+                
+                // 应用时间因子
+                baseIncrement *= timeFactor
+                
+                // 确保进度不会一次性完成长期目标
+                val maxIncrement = minOf(0.25f, 1f / effectiveTotalDays * 5)
+                baseIncrement = minOf(baseIncrement, maxIncrement)
+                
+                println("DEBUG: 目标[$goalId] 进度增量调整后: $baseIncrement")
             }
         }
         
@@ -767,6 +814,13 @@ class TaskManagerViewModel @Inject constructor(
      */
     fun clearError() {
         _taskListState.value = _taskListState.value.copy(error = null)
+    }
+    
+    /**
+     * 清除成功消息
+     */
+    fun clearSuccessMessage() {
+        _taskListState.value = _taskListState.value.copy(successMessage = null)
     }
     
     /**
@@ -1166,5 +1220,13 @@ class TaskManagerViewModel @Inject constructor(
      */
     fun getAllGoals(): Flow<List<Goal>> {
         return goalRepository.getAllGoals()
+    }
+    
+    /**
+     * 获取目标仓库
+     * @return 目标仓库
+     */
+    fun getGoalRepository(): GoalRepository {
+        return goalRepository
     }
 } 

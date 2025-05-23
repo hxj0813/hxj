@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.test2.presentation.auth.AuthViewModel
+import com.example.test2.presentation.navigation.NavRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,6 +141,9 @@ fun MineScreen(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "设置"
                         )
+                    },
+                    modifier = Modifier.clickable {
+                        navController.navigate(NavRoute.Settings.createRoute())
                     }
                 )
                 

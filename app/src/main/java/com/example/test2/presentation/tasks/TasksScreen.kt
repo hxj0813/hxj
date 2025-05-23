@@ -131,45 +131,6 @@ fun TasksScreen(
                                     fontSize = 14.sp
                                 )
                             }
-                            
-                            // 任务统计数据和统计按钮
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // 任务统计
-                                Badge(
-                                    containerColor = Color.White.copy(alpha = 0.2f),
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = "今日: ${state.todayTasksCount}",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Badge(
-                                    containerColor = Color(0xFFFF7F7F).copy(alpha = 0.8f),
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = "逾期: ${state.overdueTasksCount}",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                // 统计按钮
-                                IconButton(onClick = onNavigateToStatistics) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Insights,
-                                        contentDescription = "任务统计",
-                                        tint = Color.White
-                                    )
-                                }
-                            }
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
@@ -318,7 +279,7 @@ fun TasksScreen(
                 }
             }
 
-            // 任务编辑对话框
+            // 显示错误对话框
             if (state.error != null) {
                 AlertDialog(
                     onDismissRequest = { viewModel.clearError() },
@@ -327,6 +288,43 @@ fun TasksScreen(
                     confirmButton = {
                         TextButton(onClick = { viewModel.clearError() }) {
                             Text("确定")
+                        }
+                    }
+                )
+            }
+            
+            // 显示成功消息Snackbar
+            state.successMessage?.let { message ->
+                val snackbarHostState = remember { SnackbarHostState() }
+                
+                LaunchedEffect(message) {
+                    snackbarHostState.showSnackbar(
+                        message = message,
+                        duration = SnackbarDuration.Short
+                    )
+                    // 显示后清除消息
+                    viewModel.clearSuccessMessage()
+                }
+                
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .align(Alignment.BottomCenter),
+                    snackbar = { data ->
+                        Snackbar(
+                            modifier = Modifier
+                                .padding(bottom = 80.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White,
+                            action = {
+                                TextButton(onClick = { snackbarHostState.currentSnackbarData?.dismiss() }) {
+                                    Text("知道了", color = Color.White)
+                                }
+                            }
+                        ) {
+                            Text(data.visuals.message)
                         }
                     }
                 )

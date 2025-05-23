@@ -35,6 +35,7 @@ import androidx.navigation.navArgument
 // 暂时移除未实现的屏幕引用
 // import com.example.test2.presentation.home.HomeScreen
 import com.example.test2.presentation.mine.MineScreen
+import com.example.test2.presentation.mine.SettingsScreen
 // import com.example.test2.presentation.note.NoteScreen
 import com.example.test2.presentation.habits.HabitsScreen
 import com.example.test2.presentation.habits.NotesScreen
@@ -105,6 +106,11 @@ sealed class NavRoute(val route: String) {
     // 反思笔记子路由
     object ReflectDetail : NavRoute("reflect_detail/{reflectId}") {
         fun createRoute(reflectId: String) = "reflect_detail/$reflectId"
+    }
+    
+    // 设置页面路由
+    object Settings : NavRoute("settings") {
+        fun createRoute() = "settings"
     }
 }
 
@@ -420,6 +426,15 @@ fun AppNavigationGraph(
             // 忘记密码
             composable(route = NavRoute.ForgotPassword.route) {
                 ForgotPasswordScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            
+            // 设置页面
+            composable(route = NavRoute.Settings.route) {
+                SettingsScreen(
                     onNavigateBack = {
                         navController.popBackStack()
                     }
